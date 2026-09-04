@@ -1,0 +1,44 @@
+# Cookie Doctor (SameSite, Secure, Domain)
+
+> Free, client-side checker that finds why a session cookie is not stored or not sent: SameSite, Secure, Domain, and Path attribute mismatches, cross-site request blocking, and missing fetch credentials, with the exact fix for each.
+
+Describe your Set-Cookie attributes (SameSite, Secure, Domain, Path) and the request context (page origin vs. API origin, HTTP vs. HTTPS, same-site vs. cross-site, whether the request is a fetch/XHR call), and it reports precisely which rule the browser is enforcing and what to change, no account, no backend, nothing you type leaves your browser.
+
+## What it checks
+
+27 checks, grouped:
+
+- `SameSite`/`Secure` pairing: `SameSite=None` without `Secure` is rejected outright, not downgraded; `Secure` on a plain `http://` origin that isn't `localhost` is refused; an unspecified `SameSite` defaults to `Lax` in every current browser.
+- Cross-site / third-party: a cross-site request (different registrable domain and/or scheme) blocked by `SameSite=Strict`/`Lax`; inside a cross-site iframe, Safari's Intelligent Tracking Prevention can withhold a `SameSite=None` cookie regardless of the attribute, and other browsers are moving toward the same restriction (with a nudge toward the `Partitioned` attribute, CHIPS).
+- `Domain`: set to a sibling/unrelated host instead of your own or a parent domain; a bare top-level label or a known multi-label public suffix (`co.uk`, `github.io`, ...); `Domain=localhost` (no parent domain to generalize to); a harmless leading dot (informational only).
+- `Path`: narrower than the request path, so the cookie exists but isn't attached; a `Path` value that doesn't start with `/`.
+- Expiry: `Max-Age <= 0` or a past `Expires` date both delete the cookie immediately; an unparsable `Expires` date.
+- Cookie-name prefixes: `__Host-`, `__Secure-`, and `__Http-`/`__Host-Http-` each carry hard requirements (`Secure`, no `Domain`, `Path=/`, `HttpOnly`) that get the cookie rejected outright if violated.
+- `Partitioned` (CHIPS): requires `Secure`, and works best paired with `SameSite=None` for browsers that don't yet support partitioning.
+- `fetch()`/XHR credentials: the default `'same-origin'` mode drops cookies on a cross-origin call regardless of the cookie's own attributes; once `credentials: 'include'` is set, the API's CORS response needs an exact `Access-Control-Allow-Origin` plus `Access-Control-Allow-Credentials: true` (a wildcard origin is incompatible with credentials).
+
+## Who it's for
+
+Developers whose session cookie is not stored or not sent: a React/Vite front end on one origin talking to an API on another, different localhost ports during development, cookies meant to work across subdomains, cookies read inside an iframe, mobile app webviews, and Safari's Intelligent Tracking Prevention (full third-party cookie blocking, and a 7-day cap on JavaScript-set first-party cookies without user interaction).
+
+## How it works
+
+Static HTML plus one dependency-free JavaScript file, `doctor-cookie.js`, exporting a single pure function `diagnose(config)`. All checks run in your browser against the raw `Set-Cookie` value and request context you enter; the tool has no backend and makes no request that carries your configuration anywhere.
+
+## Privacy
+
+No account, no login, no cookies for the tool itself, no server-side processing of your config. The only analytics are anonymous usage counts (event name + count, never the content of what you entered) sent to a self-hosted Umami instance.
+
+## Links
+
+- Tool: https://arling.sk/cookie-samesite-doctor/
+- Full reference (worked example + FAQ): https://arling.sk/cookie-samesite-doctor/llms-full.txt
+- Source code: https://github.com/AndryRoby/cookie-samesite-doctor
+- Sibling tool for Google OAuth redirect_uri_mismatch: https://arling.sk/google-oauth-redirect-doctor/
+- Sibling tool for Supabase Auth on the web (Next.js/Vite/SvelteKit): https://arling.sk/supabase-redirect-doctor/
+- Sibling tool for Stripe webhook signature failures: https://arling.sk/stripe-webhook-doctor/
+- Hub (more ARLing tools): https://arling.sk/
+
+## Contact
+
+Built by ARLing s. r. o. (Bratislava, Slovakia). andrej@arling.sk

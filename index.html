@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://homelab.tailbf8f27.ts.net; connect-src 'self' https://homelab.tailbf8f27.ts.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>Cookie Doctor (SameSite, Secure, Domain)</title>
+<meta name="description" content="Paste the raw Set-Cookie header, your page and API origins, and how the request is made (fetch/XHR, iframe, top-level navigation). Get the exact attribute or line of client code that's dropping your session cookie. Free and client-side; nothing leaves your browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cookie Doctor (SameSite, Secure, Domain)">
+<meta property="og:description" content="Paste your Set-Cookie header, page/API origins, and request context. Get the exact attribute that's blocking your session cookie. Free and client-side.">
+<meta property="og:url" content="https://arling.sk/cookie-samesite-doctor/">
+<meta property="og:image" content="https://arling.sk/cookie-samesite-doctor/icon-512.png">
+<meta name="theme-color" content="#f6f2ea">
+<link rel="canonical" href="https://arling.sk/cookie-samesite-doctor/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="alternate" type="text/plain" href="https://arling.sk/cookie-samesite-doctor/llms.txt" title="llms.txt">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Cookie Doctor (SameSite, Secure, Domain)",
+  "url": "https://arling.sk/cookie-samesite-doctor/",
+  "description": "Free, client-side checker that diagnoses why a session cookie is not stored or not sent: SameSite/Secure/Domain/Path attribute mismatches, cross-site request blocking, fetch credentials, CORS, and third-party cookie blocking in Safari and Chrome.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "ARLing s. r. o.",
+    "url": "https://arling.sk/",
+    "email": "andrej@arling.sk",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Bratislava",
+      "addressCountry": "SK"
+    }
+  },
+  "sameAs": [
+    "https://github.com/AndryRoby/cookie-samesite-doctor"
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why is my cookie not set even though Set-Cookie is in the response?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The most common reasons: SameSite=None is set without Secure, so the browser rejects it outright; Secure is set but the response came over plain http (localhost is the only exemption, and Safari does not even grant that one); the Domain attribute names a host that is neither the responding server nor a parent of it (for example a response from api.example.com trying to set Domain=app.example.com); or a fetch/XHR call to a different origin used the default credentials mode instead of credentials:'include', so the browser never stored the Set-Cookie response in the first place."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between same-site and same-origin?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Origin is scheme + host + port: https://app.example.com and https://api.example.com are different origins, and so are https://app.example.com and https://app.example.com:8443. Site is coarser: scheme plus the registrable domain (roughly, the domain suffix plus the label before it), ignoring subdomain and port. app.example.com and api.example.com are cross-origin but same-site. SameSite cookie rules only care about site; fetch's credentials mode and CORS care about origin, so a request can be same-site and still need credentials:'include'."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need SameSite=None for localhost:3000 talking to localhost:8000?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Both are the host \"localhost\", so they are same-site regardless of port; SameSite=Lax or even Strict is fine. What trips people up is that they are still different origins (the port differs), so a cross-origin fetch/XHR call needs credentials:'include' (or xhr.withCredentials = true) and the API needs matching CORS headers, or the cookie will not be sent or stored even though SameSite was never the problem."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does it work in Chrome but not Safari?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Safari's Intelligent Tracking Prevention blocks or purges storage, including cookies, for a third party the user has not interacted with directly as a first party, independent of SameSite=None. A cookie set inside a cross-site iframe can work in Chrome (which mostly still allows it, though it is moving to partition or restrict it too) and still fail in Safari. There is no cookie attribute that opts back into third-party storage in Safari; the fix is routing the request through a first-party domain, using the Storage Access API, or not depending on a third-party cookie there at all."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is the cookie not sent with fetch?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "fetch()'s default credentials mode is 'same-origin': for any cross-origin request (different scheme, host, or port) it neither sends existing cookies nor stores new ones from Set-Cookie, no matter what SameSite says. Add credentials:'include' (xhr.withCredentials = true for XMLHttpRequest). Once that is set, the API's CORS response also has to cooperate: Access-Control-Allow-Credentials: true and an exact Access-Control-Allow-Origin naming your page's origin, never a wildcard '*', which is incompatible with credentials."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this tool send my cookie anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Everything you type is parsed and diffed entirely in your browser; there is no backend and no request that carries your Set-Cookie value, session token, or origins anywhere. Read index.html and doctor-cookie.js directly to verify. The only network calls this page makes are to load itself and, if you use it, an anonymous page-view/event count sent to a self-hosted Umami instance that never receives what you typed."
+      }
+    }
+  ]
+}
+</script>
+
+<style>
+  :root {
+    --paper:#f6f2ea; --paper-2:#fbf9f4; --ink:#1b1a17; --ink-2:#4a4741; --muted:#66625a; --line:#d9d2c4;
+    --accent:#b23a1d; --accent-soft:#f3e2dc; --ok:#2f6f3e; --warn:#9a6b00;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
+    --radius:4px;
+    --maxw:1080px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#151412; --paper-2:#1d1b18; --ink:#efe9de; --ink-2:#c9c2b5; --muted:#8f887b; --line:#2e2b26; --accent:#e0623f; --accent-soft:#3a1f17; --ok:#7fbf8e; --warn:#d9a54a; }
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--paper); }
+  body { margin:0; color:var(--ink); background:var(--paper); font:16px/1.55 var(--sans); -webkit-font-smoothing:antialiased; }
+  img { max-width:100%; }
+  a { color:inherit; text-decoration-color:var(--line); text-underline-offset:3px; }
+  a:hover { text-decoration-color:var(--accent); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  [hidden] { display:none !important; }
+  .skip { position:absolute; left:-999px; top:8px; background:var(--ink); color:var(--paper); padding:8px 12px; z-index:100; }
+  .skip:focus { left:8px; }
+  .wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+  .mono { font-family:var(--mono); }
+
+  /* Header */
+  header.top { border-bottom:1px solid var(--line); }
+  header.top .wrap { display:flex; align-items:baseline; justify-content:space-between; gap:20px 24px; padding:18px 24px; flex-wrap:wrap; }
+  .wordmark { font:600 21px/1 var(--serif); text-decoration:none; }
+  .wordmark small { font:12.5px/1 var(--sans); color:var(--muted); margin-left:10px; letter-spacing:.04em; }
+  nav.main { display:flex; flex-wrap:wrap; gap:6px 20px; }
+  nav.main a { font-size:14px; text-decoration:none; color:var(--ink-2); white-space:nowrap; }
+  nav.main a:hover { color:var(--accent); }
+  @media (max-width:480px) { .wordmark small { display:none; } }
+
+  /* Hero */
+  .hero { padding:60px 0 44px; border-bottom:1px solid var(--line); }
+  .hero h1 { font:400 clamp(30px,5vw,46px)/1.15 var(--serif); letter-spacing:-.01em; margin:0 0 18px; max-width:24ch; }
+  .hero h1 .mono { font-size:.62em; font-weight:500; }
+  .hero p.lead { font-size:18px; color:var(--ink-2); max-width:62ch; margin:0 0 26px; }
+  .hero-cta { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:28px; }
+  .facts { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px 0; color:var(--muted); font-size:14px; }
+  .facts li + li::before { content:"\00b7"; margin:0 10px; color:var(--line); }
+  .facts b { color:var(--ink); font-weight:600; }
+
+  /* Buttons */
+  .btn { display:inline-block; font:600 15px/1 var(--sans); padding:12px 18px; border-radius:var(--radius); text-decoration:none; cursor:pointer; border:2px solid transparent; }
+  .btn-solid { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-solid:hover { color:#fff; opacity:.92; }
+  .btn-line { border:2px solid var(--ink); color:var(--ink); background:transparent; }
+  .btn:disabled { opacity:.6; cursor:default; }
+
+  /* Section frame */
+  section.block { padding:56px 0; border-bottom:1px solid var(--line); }
+  .section-head { max-width:74ch; margin-bottom:8px; }
+  .kicker { font:400 14px/1 var(--serif); color:var(--accent); letter-spacing:.04em; margin:0 0 8px; }
+  h2 { font:400 clamp(24px,3.4vw,30px)/1.2 var(--serif); margin:0 0 10px; letter-spacing:-.005em; max-width:26ch; }
+  .sub { color:var(--ink-2); max-width:64ch; margin:0; font-size:15.5px; }
+
+  /* Rules list (problem section) */
+  .rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:26px 32px; margin:30px 0 0; padding:0; list-style:none; counter-reset:r; }
+  .rules li { padding-top:14px; border-top:1px solid var(--line); min-width:0; }
+  .rules li::before { counter-increment:r; content:counter(r,decimal-leading-zero); font:400 14px/1 var(--serif); color:var(--accent); display:block; margin-bottom:8px; }
+  .rules b { display:block; font-weight:600; margin-bottom:4px; font-size:15.5px; }
+  .rules p { margin:0; color:var(--ink-2); font-size:14.5px; overflow-wrap:anywhere; }
+
+  /* Playground */
+  .play { border:1px solid var(--line); background:var(--paper-2); border-radius:6px; overflow:hidden; margin-top:30px; }
+  .play-head { display:flex; align-items:center; gap:14px; padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:12px; color:var(--muted); flex-wrap:wrap; }
+  .play-head .lights { display:flex; gap:6px; }
+  .play-head .lights span { width:9px; height:9px; border-radius:50%; border:1px solid var(--line); }
+  .play-head .path { color:var(--ink-2); }
+  .play-head .path .method { color:var(--accent); }
+  .play-head .spacer { flex:1; }
+  .play-head .runtime { color:var(--muted); }
+
+  .play-body { display:grid; grid-template-columns:1fr 1fr; min-height:460px; }
+  @media (max-width:900px) { .play-body { grid-template-columns:1fr; } }
+  .pane { display:flex; flex-direction:column; min-width:0; }
+  .pane + .pane { border-left:1px solid var(--line); }
+  @media (max-width:900px) { .pane + .pane { border-left:none; border-top:1px solid var(--line); } }
+  .pane-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .pane-title { font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+  .pane-actions { display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:4px; }
+  .tab-btn { background:transparent; border:1px solid var(--line); color:var(--ink-2); font-family:var(--sans); font-size:12.5px; padding:5px 10px; border-radius:4px; cursor:pointer; }
+  .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  .tab-btn:not(.active):hover { border-color:var(--ink-2); color:var(--ink); }
+
+  /* Small utility buttons */
+  .icon-btn { background:transparent; color:var(--ink-2); border:1px solid var(--line); border-radius:4px; font-family:var(--sans); font-size:12px; padding:5px 10px; cursor:pointer; }
+  .icon-btn:hover { color:var(--ink); border-color:var(--ink-2); background:var(--paper); }
+  .icon-btn:disabled { opacity:.6; cursor:progress; }
+  .icon-btn.btn-solid { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  .icon-btn.btn-solid:hover { opacity:.9; background:var(--accent); color:#fff; }
+
+  /* Form mode */
+  #form-pane { flex:1; overflow:auto; padding:16px 18px; display:flex; flex-direction:column; gap:20px; min-height:440px; }
+  .form-section { display:flex; flex-direction:column; gap:10px; }
+  .form-section-title { font:600 11px/1 var(--sans); letter-spacing:.04em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .field.full { grid-column:1 / -1; }
+  .field label { font-size:12px; color:var(--ink-2); font-family:var(--sans); }
+  .field input[type="text"], .field input[type="number"], .field select, .field textarea {
+    background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:4px;
+    padding:7px 9px; font-family:var(--mono); font-size:12.5px; outline:none; width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--ink-2); }
+  .field textarea { resize:vertical; min-height:50px; line-height:1.5; }
+  .field .hint { font-size:10.5px; color:var(--muted); font-family:var(--sans); }
+  @media (max-width:480px) { .field-grid { grid-template-columns:1fr; } }
+
+  .json-pane { display:flex; flex-direction:column; }
+  textarea.json-in {
+    flex:1; width:100%; background:var(--paper-2); color:var(--ink); border:none; outline:none; resize:none;
+    padding:16px 18px; font-family:var(--mono); font-size:13px; line-height:1.65; tab-size:2; min-height:440px;
+  }
+  .json-error { margin:0; padding:8px 18px; font-family:var(--mono); font-size:11.5px; color:var(--accent); background:var(--accent-soft); border-top:1px solid var(--line); }
+
+  .output { flex:1; padding:16px 18px; font-family:var(--mono); font-size:13px; line-height:1.7; overflow:auto; min-height:440px; background:var(--paper-2); }
+  .output .placeholder { color:var(--muted); font-size:13px; font-family:var(--mono); }
+  .output .placeholder .blink { display:inline-block; width:7px; height:14px; background:var(--muted); vertical-align:-2px; margin-left:4px; animation:blink 1.1s steps(2,end) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+
+  .out-line { white-space:pre-wrap; word-break:break-word; }
+  .k { color:var(--ink-2); }
+  .s { color:var(--ok); }
+  .n { color:var(--accent); }
+  .b { color:var(--ink-2); font-style:italic; }
+  .p { color:var(--muted); }
+  .sev-high { color:var(--accent); }
+  .sev-medium { color:var(--warn); }
+  .sev-low { color:var(--muted); }
+
+  .status-strip { display:flex; align-items:center; gap:14px; padding:10px 18px; border-top:1px solid var(--line); font-family:var(--mono); font-size:11.5px; color:var(--muted); flex-wrap:wrap; }
+  .status-pill { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:4px; border:1px solid var(--line); background:var(--paper); color:var(--ink-2); }
+  .status-pill.fail { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .status-pill.warn { color:var(--warn); border-color:var(--warn); }
+  .status-pill.pass { color:var(--ok); border-color:var(--ok); }
+
+  /* Rendered result */
+  .result { display:flex; flex-direction:column; gap:20px; }
+  .big-pill { display:inline-flex; align-items:center; font-family:var(--mono); font-size:12px; font-weight:600; padding:4px 10px; border-radius:4px; border:1px solid var(--line); text-transform:uppercase; letter-spacing:.03em; }
+  .big-pill.pass { color:var(--ok); border-color:var(--ok); }
+  .big-pill.warn { color:var(--warn); border-color:var(--warn); }
+  .big-pill.fail { color:var(--accent); border-color:var(--accent); }
+  .result-summary { font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:10px 0 0; }
+
+  .exp-table { width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed; }
+  .exp-table td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .exp-table td.k { color:var(--muted); white-space:nowrap; padding-right:14px; width:1%; }
+  .exp-table td.v { color:var(--ink); word-break:break-all; }
+  .exp-table td.v.mono { font-family:var(--mono); }
+  .exp-table td.v.multiline, .exp-table td.v.prose { white-space:pre-wrap; word-break:break-word; }
+  .exp-table td.v.prose { font-family:var(--sans); color:var(--ink-2); }
+  .exp-table tr:last-child td { border-bottom:none; }
+
+  .problem-item { border-left:3px solid var(--line); padding:8px 10px; background:var(--paper); border-radius:0 4px 4px 0; font-size:12.5px; line-height:1.5; overflow-wrap:anywhere; }
+  .problem-item + .problem-item { margin-top:8px; }
+  .problem-item.high { border-color:var(--accent); }
+  .problem-item.medium { border-color:var(--warn); }
+  .problem-item.low { border-color:var(--muted); }
+  .problem-item .sev-tag { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.03em; margin-right:6px; }
+  .problem-item.high .sev-tag { color:var(--accent); }
+  .problem-item.medium .sev-tag { color:var(--warn); }
+  .problem-item.low .sev-tag { color:var(--muted); }
+  .problem-item .where { color:var(--muted); font-family:var(--mono); font-size:10.5px; margin-top:3px; }
+
+  .fix-item { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:4px; padding:9px 10px; font-size:12px; }
+  .fix-item + .fix-item { margin-top:8px; }
+  .fix-item .fix-body { min-width:0; flex:1; }
+  .fix-item .fix-title { color:var(--ink-2); margin-bottom:4px; }
+  .fix-item .fix-title .where { color:var(--muted); }
+  .fix-item .fix-value { font-family:var(--mono); color:var(--accent); word-break:break-all; margin:0; }
+  .fix-item .fix-value.multiline { white-space:pre-wrap; word-break:break-word; overflow-x:auto; }
+  .fix-item .copy-fix-btn { flex-shrink:0; }
+
+  .checklist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; font-size:12.5px; color:var(--ink-2); }
+  .checklist li { display:flex; gap:8px; line-height:1.5; overflow-wrap:anywhere; }
+  .checklist li::before { content:"\2610"; color:var(--accent); flex-shrink:0; }
+
+  .permalink-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 18px 18px; border-top:1px solid var(--line); }
+  .permalink-hint { font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+  /* Endpoint / how it works */
+  .endpoint { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; margin-top:30px; }
+  @media (max-width:820px) { .endpoint { grid-template-columns:1fr; } }
+  .codeblock { border:1px solid var(--line); background:var(--paper-2); border-radius:6px; overflow:hidden; }
+  .codeblock-head { padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+  .codeblock pre { margin:0; padding:16px 18px; font-size:12.5px; line-height:1.7; overflow-x:auto; color:var(--ink-2); font-family:var(--mono); -webkit-overflow-scrolling:touch; }
+  .endpoint-copy p { margin:0 0 14px; color:var(--ink-2); font-size:15px; line-height:1.6; }
+  .endpoint-copy .note { font-family:var(--mono); font-size:12.5px; color:var(--muted); border-left:2px solid var(--accent); padding:8px 0 8px 14px; margin-top:18px; line-height:1.6; }
+
+  /* Free */
+  #pricing .btn-line { margin-top:26px; }
+  .ask { display:flex; flex-wrap:wrap; align-items:center; gap:14px 24px; }
+  .ask p { margin:0; color:var(--ink-2); max-width:56ch; }
+  .subscribe-ask { border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+  .subscribe-form { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .subscribe-form input[type="email"] { height:44px; min-width:0; flex:1 1 240px; padding:0 14px; border:1px solid var(--line); border-radius:4px; background:var(--paper-2); color:var(--ink); font:15px/1 var(--sans); }
+  .subscribe-form input[type="email"]::placeholder { color:var(--muted); }
+  .subscribe-form .btn { flex:none; }
+  .hp { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  #subscribe-thanks { color:var(--ok); font-weight:600; }
+  #subscribe-error { color:var(--accent); font-weight:600; }
+  @media (max-width: 480px) { .subscribe-form input[type="email"], .subscribe-form button { width:100%; } }
+
+  /* FAQ (details/summary) */
+  details { border-top:1px solid var(--line); padding:14px 0; }
+  details:last-of-type { border-bottom:1px solid var(--line); }
+  summary { cursor:pointer; font:400 18px/1.3 var(--serif); list-style:none; display:flex; justify-content:space-between; gap:12px; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"+"; color:var(--accent); flex:none; font-family:var(--sans); }
+  details[open] summary::after { content:"\2013"; }
+  details p { color:var(--ink-2); margin:10px 0 0; max-width:70ch; font-size:14.5px; overflow-wrap:anywhere; }
+
+  /* Footer */
+  footer { padding:32px 0 48px; color:var(--muted); font-size:13.5px; }
+  footer .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px 32px; }
+  footer b { color:var(--ink); font-weight:600; }
+  footer a { color:var(--ink-2); }
+  footer p { margin:10px 0 0; }
+
+  .kbd { font-family:var(--mono); font-size:11px; padding:1px 6px; border-radius:3px; border:1px solid var(--line); background:var(--paper); color:var(--ink-2); }
+  .anchor-offset { scroll-margin-top:24px; }
+  pre { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  pre span { white-space:pre; }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#playground">Skip to the diagnosis tool</a>
+
+<!-- Header -->
+<header id="top" class="top">
+  <div class="wrap">
+    <a class="wordmark" href="https://arling.sk/">Cookie Doctor<small>an ARLing tool</small></a>
+    <nav class="main" aria-label="Page">
+      <a href="#problem">Problem</a>
+      <a href="#playground">Diagnose</a>
+      <a href="#endpoint">How it works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="wrap">
+    <h1>Set-Cookie sent, cookie never set? Find the attribute that blocks it.</h1>
+    <p class="lead">Paste the raw <span class="mono">Set-Cookie</span> header, your page and API origins, and how the request is made: fetch/XHR, an iframe, or a top-level navigation. Get the exact attribute, or the exact line of client code, that's dropping your session cookie: SameSite, Secure, Domain, Path, credentials mode, or third-party blocking.</p>
+    <div class="hero-cta">
+      <a href="#playground" class="btn btn-solid">Diagnose your cookie</a>
+      <a href="https://github.com/AndryRoby/cookie-samesite-doctor" class="btn btn-line" target="_blank" rel="noopener">View source on GitHub</a>
+    </div>
+    <ul class="facts">
+      <li><b>27</b> rules checked</li>
+      <li><b>130</b> automated tests</li>
+      <li><b>0 &euro;</b>, no account</li>
+      <li>runs entirely in your browser</li>
+    </ul>
+  </div>
+</div>
+
+<main>
+
+<!-- 01 Problem -->
+<section id="problem" class="block anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">01</p>
+      <h2>Three reasons a Set-Cookie response never becomes a stored, sent cookie.</h2>
+      <p class="sub">A React/Vite front end calling an API on another origin, a subdomain split between app and api, an embedded iframe, a Safari user: each breaks a cookie for a different reason. These three account for almost every "but the header is right there" bug.</p>
+    </div>
+    <ol class="rules">
+      <li>
+        <b>SameSite=None needs Secure, and cross-site needs SameSite=None.</b>
+        <p>No <span class="mono">Secure</span> alongside <span class="mono">SameSite=None</span> and the browser rejects the cookie outright. A cross-site fetch, XHR, or iframe request with <span class="mono">Lax</span>, <span class="mono">Strict</span>, or no <span class="mono">SameSite</span> at all (default: Lax) never carries the cookie either.</p>
+      </li>
+      <li>
+        <b>Cross-origin fetch needs credentials:'include'.</b>
+        <p>Different port, different subdomain, or different scheme is enough. fetch's default credentials mode is <span class="mono">'same-origin'</span>: without <span class="mono">credentials:'include'</span>, cookies are never sent or stored, no matter what <span class="mono">SameSite</span> says.</p>
+      </li>
+      <li>
+        <b>Domain has to be your host or its parent.</b>
+        <p>A cookie set by <span class="mono">api.example.com</span> with <span class="mono">Domain=app.example.com</span>, or with <span class="mono">Domain=localhost</span>, is rejected by the browser, not just scoped differently than you expected.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- 02 Diagnose -->
+<section id="playground" class="block anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">02</p>
+      <h2>Paste the header and the request context. Get the exact diff.</h2>
+      <p class="sub">Nothing you type is sent anywhere. The check runs in your browser, against the documented behavior of SameSite, Secure, Domain, Path, fetch credentials, CORS, and third-party cookie blocking.</p>
+    </div>
+
+    <div class="play">
+      <div class="play-head">
+        <div class="lights"><span></span><span></span><span></span></div>
+        <div class="path"><span class="method">fn</span>&nbsp;CookieDoctor.diagnose(config)</div>
+        <div class="spacer"></div>
+        <div class="runtime">client-side, no network</div>
+      </div>
+
+      <div class="play-body">
+        <div class="pane">
+          <div class="pane-head">
+            <div class="tabs">
+              <button class="tab-btn active" id="tab-form" type="button">Form</button>
+              <button class="tab-btn" id="tab-json" type="button">JSON</button>
+            </div>
+            <div class="pane-actions">
+              <button class="icon-btn" id="reset-btn" type="button" title="Reset to example">example</button>
+              <button class="icon-btn btn-solid" id="run-btn" type="button">Diagnose &crarr;</button>
+            </div>
+          </div>
+
+          <div id="form-pane">
+            <div class="form-section">
+              <div class="form-section-title">The cookie</div>
+              <div class="field-grid">
+                <div class="field full">
+                  <label for="f-setcookie">Set-Cookie header (paste the raw value)</label>
+                  <textarea id="f-setcookie" rows="3" placeholder="session=abc123; Path=/; HttpOnly; SameSite=Lax" spellcheck="false"></textarea>
+                  <span class="hint">DevTools &rarr; Network &rarr; the response &rarr; Response Headers &rarr; Set-Cookie, or your server logs. A leading "Set-Cookie:" label is fine.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">Where the request happens</div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="f-pageorigin">Page origin</label>
+                  <input type="text" id="f-pageorigin" placeholder="https://app.example.com" spellcheck="false" />
+                  <span class="hint">The tab, or the parent frame if this is an iframe.</span>
+                </div>
+                <div class="field">
+                  <label for="f-apiorigin">API / cookie-setting origin</label>
+                  <input type="text" id="f-apiorigin" placeholder="https://api.example.com" spellcheck="false" />
+                  <span class="hint">Where Set-Cookie actually came from. A path is fine, e.g. .../v1.</span>
+                </div>
+                <div class="field">
+                  <label for="f-context">Request context</label>
+                  <select id="f-context">
+                    <option value="">not set</option>
+                    <option value="top-level">Top-level navigation</option>
+                    <option value="iframe">Iframe</option>
+                    <option value="fetch-xhr">fetch / XHR</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="f-credentials">fetch/XHR credentials mode</label>
+                  <select id="f-credentials">
+                    <option value="">not set</option>
+                    <option value="omit">omit</option>
+                    <option value="same-origin">same-origin</option>
+                    <option value="include">include</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="f-browser">Browser</label>
+                  <select id="f-browser">
+                    <option value="">not set</option>
+                    <option value="chrome">Chrome</option>
+                    <option value="safari">Safari</option>
+                    <option value="firefox">Firefox</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="f-proxy">Behind an HTTPS-terminating proxy?</label>
+                  <select id="f-proxy">
+                    <option value="">not set</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                  <span class="hint">Check "true" if a reverse proxy/load balancer already terminates TLS in front of an app that itself sees plain http.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="json-pane" class="json-pane" hidden>
+            <textarea class="json-in" id="input" spellcheck="false" wrap="off"></textarea>
+            <div class="json-error" id="json-error" hidden></div>
+          </div>
+        </div>
+
+        <div class="pane">
+          <div class="pane-head">
+            <div class="pane-title">Result &middot; <span id="response-meta">idle</span></div>
+            <div class="pane-actions">
+              <button class="icon-btn" id="raw-toggle-btn" type="button">raw JSON</button>
+              <button class="icon-btn" id="copy-btn" type="button">copy</button>
+            </div>
+          </div>
+          <div class="output" id="output">
+            <div class="placeholder">Fill in the form and press <span class="kbd">Diagnose</span> or <span class="kbd">&#8984;&crarr;</span> to see the result.<span class="blink"></span></div>
+          </div>
+          <div class="status-strip">
+            <div>status</div>
+            <div id="status-pill" class="status-pill">idle</div>
+            <div class="spacer" style="flex:1"></div>
+            <div id="timing">not run yet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="permalink-row">
+        <button class="icon-btn" id="copy-link-btn" type="button">Copy link to this diagnosis</button>
+        <span class="permalink-hint">Encodes origins/context into the URL, never the Set-Cookie value itself: that's never put in a shareable link.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 How it works -->
+<section id="endpoint" class="block anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">03</p>
+      <h2>One function. Config in, diagnosis out.</h2>
+      <p class="sub">No server, no API key, no signup. <span class="mono">doctor-cookie.js</span> is plain JavaScript: read it, fork it, or run it in your own scripts or CI.</p>
+    </div>
+
+    <div class="endpoint">
+      <div class="codeblock">
+        <div class="codeblock-head">
+          <span>doctor-cookie.js</span>
+          <span>0 dependencies</span>
+        </div>
+        <pre><span class="p">import</span> { diagnose } <span class="p">from</span> <span class="s">'./doctor-cookie.js'</span>;
+<span class="p">// or, loaded globally: const { diagnose } = window.CookieDoctor;</span>
+
+<span class="p">const</span> result = diagnose({
+  <span class="k">setCookie</span>:           <span class="s">'session=abc123; Path=/; SameSite=None'</span>,
+  <span class="k">pageOrigin</span>:          <span class="s">'https://app.example.com'</span>,
+  <span class="k">apiOrigin</span>:           <span class="s">'https://api.example.com'</span>,
+  <span class="k">requestCredentials</span>:  <span class="s">'include'</span>,  <span class="p">// 'omit' | 'same-origin' | 'include' | ''</span>
+  <span class="k">context</span>:             <span class="s">'fetch-xhr'</span>, <span class="p">// 'top-level' | 'iframe' | 'fetch-xhr' | ''</span>
+  <span class="k">browser</span>:             <span class="s">'chrome'</span>,    <span class="p">// 'chrome' | 'safari' | 'firefox' | ''</span>
+  <span class="k">proxyBehindHttps</span>:    <span class="b">null</span>,
+});
+
+<span class="p">// result</span>
+{
+  <span class="k">"status"</span>:     <span class="s">"fail"</span> | <span class="s">"warn"</span> | <span class="s">"pass"</span>,
+  <span class="k">"summary"</span>:    <span class="s">"&hellip;"</span>,
+  <span class="k">"expected"</span>:   { <span class="p">cookie, page, api, isCrossSite, isCrossOrigin, correctedSetCookieLine, &hellip;</span> },
+  <span class="k">"problems"</span>:   [ { severity, code, message, path, value, fix } ],
+  <span class="k">"fixes"</span>:      [ { title, value, where } ],
+  <span class="k">"checklist"</span>:  [ <span class="s">"&hellip;"</span> ],
+  <span class="k">"disclaimer"</span>: <span class="s">"&hellip;"</span>
+}</pre>
+      </div>
+
+      <div class="endpoint-copy">
+        <p><strong style="color:var(--ink)">Everything runs client-side.</strong> The form above calls this exact function in your browser. There is no backend, no API key, and no request that carries your cookie or origins anywhere.</p>
+        <p>It parses the Set-Cookie header attribute by attribute, computes whether your two origins are same-origin, same-site, or cross-site, applies SameSite's actual sending rules for the request context you specify, and checks Secure, Domain, Path, Expires/Max-Age, cookie-name prefixes, Partitioned, fetch credentials, and CORS against each other, in the order a real browser would reject them.</p>
+        <div class="note">Free and open source. Found a case it gets wrong? Open a GitHub issue on the repo. No ads, and no tracking beyond anonymous usage counts.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 Free -->
+<section id="pricing" class="block anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">04</p>
+      <h2>Free.</h2>
+      <p class="sub">No account, no payment, no usage limit: it runs as a static page in your browser, so there is no server to bill for.</p>
+    </div>
+    <div class="ask subscribe-ask" id="subscribe">
+      <p><b>Tell me when a new tool lands.</b> New tools only. No newsletter, no sharing. Reply to any mail to be removed.</p>
+      <form id="subscribe-form" class="subscribe-form" data-subscribe data-source="cookie-samesite-doctor" data-lang="en" data-thanks="subscribe-thanks" data-error="subscribe-error" novalidate>
+        <div class="hp" aria-hidden="true"><input type="text" name="website" id="subscribe-website" tabindex="-1" autocomplete="off"></div>
+        <input type="email" id="subscribe-email" name="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address">
+        <button class="btn btn-solid" type="submit">Notify me</button>
+      </form>
+      <p id="subscribe-thanks" hidden>Thanks. You will hear from us only when something new is live.</p>
+      <p id="subscribe-error" hidden>Could not save. Write to <a href="mailto:andrej@arling.sk">andrej@arling.sk</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 05 Questions -->
+<section id="faq" class="block anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker">05</p>
+      <h2>Questions developers actually search for.</h2>
+      <p class="sub">Straight answers to the same cookie questions this tool diagnoses, for when you just need the answer, not the checker.</p>
+    </div>
+
+    <details>
+      <summary>Why is my cookie not set even though Set-Cookie is in the response?</summary>
+      <p>The most common reasons: <span class="mono">SameSite=None</span> is set without <span class="mono">Secure</span>, so the browser rejects it outright; <span class="mono">Secure</span> is set but the response came over plain http (localhost is the only exemption, and Safari does not even grant that one); the <span class="mono">Domain</span> attribute names a host that is neither the responding server nor a parent of it (for example a response from <span class="mono">api.example.com</span> trying to set <span class="mono">Domain=app.example.com</span>); or a fetch/XHR call to a different origin used the default credentials mode instead of <span class="mono">credentials:'include'</span>, so the browser never stored the Set-Cookie response in the first place.</p>
+    </details>
+    <details>
+      <summary>What is the difference between same-site and same-origin?</summary>
+      <p>Origin is scheme + host + port: <span class="mono">https://app.example.com</span> and <span class="mono">https://api.example.com</span> are different origins, and so are <span class="mono">https://app.example.com</span> and <span class="mono">https://app.example.com:8443</span>. Site is coarser: scheme plus the registrable domain (roughly, the domain suffix plus the label before it), ignoring subdomain and port. <span class="mono">app.example.com</span> and <span class="mono">api.example.com</span> are cross-origin but same-site. SameSite cookie rules only care about site; fetch's credentials mode and CORS care about origin, so a request can be same-site and still need <span class="mono">credentials:'include'</span>.</p>
+    </details>
+    <details>
+      <summary>Do I need SameSite=None for localhost:3000 talking to localhost:8000?</summary>
+      <p>No. Both are the host "localhost", so they are same-site regardless of port; <span class="mono">SameSite=Lax</span> or even <span class="mono">Strict</span> is fine. What trips people up is that they are still different origins (the port differs), so a cross-origin fetch/XHR call needs <span class="mono">credentials:'include'</span> (or <span class="mono">xhr.withCredentials = true</span>) and the API needs matching CORS headers, or the cookie will not be sent or stored even though SameSite was never the problem.</p>
+    </details>
+    <details>
+      <summary>Why does it work in Chrome but not Safari?</summary>
+      <p>Safari's Intelligent Tracking Prevention blocks or purges storage, including cookies, for a third party the user has not interacted with directly as a first party, independent of <span class="mono">SameSite=None</span>. A cookie set inside a cross-site iframe can work in Chrome (which mostly still allows it, though it is moving to partition or restrict it too) and still fail in Safari. There is no cookie attribute that opts back into third-party storage in Safari; the fix is routing the request through a first-party domain, using the Storage Access API, or not depending on a third-party cookie there at all.</p>
+    </details>
+    <details>
+      <summary>Why is the cookie not sent with fetch?</summary>
+      <p><span class="mono">fetch()</span>'s default credentials mode is <span class="mono">'same-origin'</span>: for any cross-origin request (different scheme, host, or port) it neither sends existing cookies nor stores new ones from Set-Cookie, no matter what SameSite says. Add <span class="mono">credentials:'include'</span> (<span class="mono">xhr.withCredentials = true</span> for XMLHttpRequest). Once that is set, the API's CORS response also has to cooperate: <span class="mono">Access-Control-Allow-Credentials: true</span> and an exact <span class="mono">Access-Control-Allow-Origin</span> naming your page's origin, never a wildcard <span class="mono">'*'</span>, which is incompatible with credentials.</p>
+    </details>
+    <details>
+      <summary>Does this tool send my cookie anywhere?</summary>
+      <p>No. Everything you type is parsed and diffed entirely in your browser; there is no backend and no request that carries your Set-Cookie value, session token, or origins anywhere. Read <span class="mono">index.html</span> and <span class="mono">doctor-cookie.js</span> directly to verify. The only network calls this page makes are to load itself and, if you use it, an anonymous page-view/event count sent to a self-hosted Umami instance that never receives what you typed. The "copy link" permalink also deliberately leaves the Set-Cookie value out of the URL.</p>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap cols">
+    <div><b>ARLing s. r. o.</b><br>Ivansk&aacute; cesta 32E<br>821 04 Bratislava, Slovakia</div>
+    <div>Company ID 56583486<br>VAT ID SK2122352100<br><a href="mailto:andrej@arling.sk">andrej@arling.sk</a></div>
+    <div>
+      <a href="https://arling.sk/">ARLing</a> &middot; <a href="https://arling.sk/google-oauth-redirect-doctor/" target="_blank" rel="noopener">Google OAuth Redirect Doctor</a> &middot; <a href="https://arling.sk/supabase-redirect-doctor/" target="_blank" rel="noopener">Supabase Redirect Doctor</a> &middot; <a href="https://arling.sk/redirect-doctor/" target="_blank" rel="noopener">Expo + Supabase Redirect Doctor</a><br>
+      <a href="llms.txt">llms.txt</a> &middot; <a href="sitemap.xml">sitemap</a> &middot; <a href="https://github.com/AndryRoby/cookie-samesite-doctor" target="_blank" rel="noopener">source on GitHub</a> &middot; <a href="https://arling.sk/privacy/">Privacy</a>
+      <p>Read-only, client-side check: nothing you enter is sent anywhere, and it does not call your server or browser APIs on your behalf. Verify in your browser's DevTools before shipping. Not affiliated with Google, Apple/Safari, Mozilla/Firefox, or any browser vendor.</p>
+      <p>Provided as is, without warranty. Anonymous visit and click counts via self-hosted Umami; we never see what you type.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script type="module">
+  import { diagnose, expectedValues } from './doctor-cookie.js';
+
+  // Intentionally imperfect: a React/Vite front end on one port calling an
+  // API on another (both "localhost", so same-site, but still cross-origin)
+  // over fetch/XHR without credentials:'include'. Also shows the default
+  // SameSite=Lax note and the HttpOnly/document.cookie note at once.
+  const SAMPLE_CONFIG = {
+    setCookie: "session=eyJhbGciOiJIUzI1NiJ9.abc123; Path=/; HttpOnly",
+    pageOrigin: "http://localhost:5173",
+    apiOrigin: "http://localhost:8000",
+    requestCredentials: "",
+    context: "fetch-xhr",
+    browser: "chrome",
+    proxyBehindHttps: null
+  };
+
+  const CONTEXT_OPTIONS = ['', 'top-level', 'iframe', 'fetch-xhr'];
+  const CREDENTIALS_OPTIONS = ['', 'omit', 'same-origin', 'include'];
+  const BROWSER_OPTIONS = ['', 'chrome', 'safari', 'firefox'];
+
+  const $ = (id) => document.getElementById(id);
+
+  const input = $('input');
+  const output = $('output');
+  const runBtn = $('run-btn');
+  const resetBtn = $('reset-btn');
+  const copyBtn = $('copy-btn');
+  const rawToggleBtn = $('raw-toggle-btn');
+  const copyLinkBtn = $('copy-link-btn');
+  const meta = $('response-meta');
+  const statusPill = $('status-pill');
+  const timing = $('timing');
+  const tabFormBtn = $('tab-form');
+  const tabJsonBtn = $('tab-json');
+  const formPane = $('form-pane');
+  const jsonPane = $('json-pane');
+  const jsonError = $('json-error');
+
+  let lastResult = null;
+  let rawMode = false;
+
+  // ── safe umami wrapper ──────────────────────────────────────────────
+  function track(name, data) {
+    try { if (window.umami) window.umami.track(name, data); } catch (e) {}
+  }
+
+  // ── helpers ──────────────────────────────────────────────────────────
+  function triFromSelect(v) {
+    return v === 'true' ? true : v === 'false' ? false : null;
+  }
+  function selectFromTri(v) {
+    return v === true ? 'true' : v === false ? 'false' : '';
+  }
+
+  // ── Form <-> config ──────────────────────────────────────────────────
+  function formToConfig() {
+    return {
+      setCookie: $('f-setcookie').value,
+      pageOrigin: $('f-pageorigin').value.trim(),
+      apiOrigin: $('f-apiorigin').value.trim(),
+      requestCredentials: $('f-credentials').value,
+      context: $('f-context').value,
+      browser: $('f-browser').value,
+      proxyBehindHttps: triFromSelect($('f-proxy').value)
+    };
+  }
+
+  function configToForm(cfg) {
+    cfg = cfg && typeof cfg === 'object' ? cfg : {};
+    $('f-setcookie').value = typeof cfg.setCookie === 'string' ? cfg.setCookie : '';
+    $('f-pageorigin').value = cfg.pageOrigin || '';
+    $('f-apiorigin').value = cfg.apiOrigin || '';
+    $('f-credentials').value = CREDENTIALS_OPTIONS.includes(cfg.requestCredentials) ? cfg.requestCredentials : '';
+    $('f-context').value = CONTEXT_OPTIONS.includes(cfg.context) ? cfg.context : '';
+    $('f-browser').value = BROWSER_OPTIONS.includes(cfg.browser) ? cfg.browser : '';
+    $('f-proxy').value = selectFromTri(cfg.proxyBehindHttps);
+  }
+
+  // ── mode toggle ──────────────────────────────────────────────────────
+  function setMode(mode) {
+    const toJson = mode === 'json';
+    if (toJson) {
+      input.value = JSON.stringify(formToConfig(), null, 2);
+      jsonError.hidden = true;
+      tabFormBtn.classList.remove('active');
+      tabJsonBtn.classList.add('active');
+      formPane.hidden = true;
+      jsonPane.hidden = false;
+      track('mode_json');
+      return;
+    }
+    // switching to form: parse JSON first, only switch if it's valid
+    try {
+      const parsed = JSON.parse(input.value);
+      configToForm(parsed);
+      jsonError.hidden = true;
+      tabFormBtn.classList.add('active');
+      tabJsonBtn.classList.remove('active');
+      formPane.hidden = false;
+      jsonPane.hidden = true;
+    } catch (e) {
+      jsonError.hidden = false;
+      jsonError.textContent = 'Can’t switch to Form. JSON is invalid: ' + e.message;
+      tabFormBtn.classList.remove('active');
+      tabJsonBtn.classList.add('active');
+      formPane.hidden = true;
+      jsonPane.hidden = false;
+    }
+  }
+  tabFormBtn.addEventListener('click', () => setMode('form'));
+  tabJsonBtn.addEventListener('click', () => setMode('json'));
+
+  function currentConfig() {
+    if (!jsonPane.hidden) {
+      try { return JSON.parse(input.value); } catch (e) { return null; }
+    }
+    return formToConfig();
+  }
+
+  // ── output rendering ─────────────────────────────────────────────────
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function highlight(json) {
+    return esc(json).replace(
+      /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      function (match) {
+        let cls = 'n';
+        if (/^"/.test(match)) {
+          cls = /:$/.test(match) ? 'k' : 's';
+        } else if (/true|false|null/.test(match)) {
+          cls = 'b';
+        }
+        if (cls === 's') {
+          if (/"high"/.test(match)) return '<span class="s sev-high">' + match + '</span>';
+          if (/"medium"/.test(match)) return '<span class="s sev-medium">' + match + '</span>';
+          if (/"low"/.test(match)) return '<span class="s sev-low">' + match + '</span>';
+          if (/"fail"/.test(match)) return '<span class="s sev-high">' + match + '</span>';
+          if (/"pass"/.test(match)) return '<span class="s sev-low">' + match + '</span>';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      }
+    );
+  }
+
+  function expectedRow(label, value, opts) {
+    if (value === null || value === undefined || value === '') return '';
+    opts = opts || {};
+    const multiline = String(value).includes('\n');
+    const cls = opts.prose ? 'prose' : (multiline ? 'multiline' : '');
+    return `<tr><td class="k">${esc(label)}</td><td class="v${cls ? ' ' + cls : ''}${opts.prose ? '' : ' mono'}">${esc(value)}</td></tr>`;
+  }
+
+  function fmtBool(b) {
+    return b === true ? 'true' : b === false ? 'false' : '';
+  }
+
+  function expectedRows(e) {
+    const c = e.cookie || {};
+    let rows = '';
+    if (c.provided && !c.invalid) {
+      rows += expectedRow('Cookie name', c.name);
+      rows += expectedRow('Effective SameSite', e.effectiveSameSite + (c.hasSameSite ? '' : ' (default: none set)'));
+      rows += expectedRow('Secure', fmtBool(c.secure));
+      rows += expectedRow('HttpOnly', fmtBool(c.httpOnly));
+      rows += expectedRow('Partitioned', fmtBool(c.partitioned));
+      rows += expectedRow('Domain', c.hasDomain ? c.domain : '(host-only: no Domain attribute)', { prose: !c.hasDomain });
+      rows += expectedRow('Path', c.hasPath && c.path ? c.path : '(defaults to the request path)', { prose: !(c.hasPath && c.path) });
+      if (c.prefixKind) rows += expectedRow('Cookie-name prefix', c.prefixKind);
+    }
+    if (e.page && e.page.valid) rows += expectedRow('Page site', e.pageSite);
+    if (e.api && e.api.valid) rows += expectedRow('API site', e.apiSite);
+    if (e.isCrossSite !== null && e.isCrossSite !== undefined) rows += expectedRow('Cross-site?', e.isCrossSite ? 'yes' : 'no');
+    if (e.isCrossOrigin !== null && e.isCrossOrigin !== undefined) rows += expectedRow('Cross-origin?', e.isCrossOrigin ? 'yes' : 'no');
+    if (e.correctedSetCookieLine) rows += expectedRow('Suggested Set-Cookie', e.correctedSetCookieLine);
+    return rows;
+  }
+
+  function renderResult(r) {
+    const rows = expectedRows(r.expected || {});
+
+    const problemsHtml = r.problems
+      .map(
+        (p) => `<div class="problem-item ${esc(p.severity)}">
+          <div><span class="sev-tag">${esc(p.severity)}</span>${esc(p.message)}</div>
+          ${p.where ? `<div class="where">${esc(p.where)}</div>` : ''}
+        </div>`
+      )
+      .join('');
+
+    const fixesHtml = r.fixes
+      .map(
+        (f, i) => `<div class="fix-item">
+          <div class="fix-body">
+            <div class="fix-title">${esc(f.title)}${f.where ? ` <span class="where">· ${esc(f.where)}</span>` : ''}</div>
+            <pre class="fix-value${f.value.includes('\n') ? ' multiline' : ''}">${esc(f.value)}</pre>
+          </div>
+          <button class="icon-btn copy-fix-btn" type="button" data-fix-index="${i}">copy</button>
+        </div>`
+      )
+      .join('');
+
+    const checklistHtml = r.checklist.map((c) => `<li>${esc(c)}</li>`).join('');
+
+    output.innerHTML = `<div class="result">
+      <div>
+        <span class="big-pill ${esc(r.status)}">${esc(r.status)}</span>
+        <p class="result-summary">${esc(r.summary)}</p>
+      </div>
+      <div>
+        <div class="form-section-title">Expected values</div>
+        <table class="exp-table"><tbody>${rows}</tbody></table>
+      </div>
+      ${r.problems.length ? `<div><div class="form-section-title">Problems (${r.problems.length})</div>${problemsHtml}</div>` : ''}
+      ${r.fixes.length ? `<div><div class="form-section-title">Fixes</div>${fixesHtml}</div>` : ''}
+      <div>
+        <div class="form-section-title">Checklist</div>
+        <ul class="checklist">${checklistHtml}</ul>
+      </div>
+      <div style="font-size:11px; color:var(--muted); line-height:1.6;">${esc(r.disclaimer)}</div>
+    </div>`;
+
+    output.querySelectorAll('.copy-fix-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const idx = Number(btn.getAttribute('data-fix-index'));
+        const val = r.fixes[idx].value;
+        try {
+          await navigator.clipboard.writeText(val);
+          btn.textContent = 'copied ✓';
+          track('copy_fix');
+        } catch (e) {
+          btn.textContent = 'failed';
+        }
+        setTimeout(() => { btn.textContent = 'copy'; }, 1100);
+      });
+    });
+  }
+
+  function rerenderOutput() {
+    if (!lastResult) return;
+    if (rawMode) {
+      output.innerHTML = '<pre class="out-line" style="margin:0">' + highlight(JSON.stringify(lastResult, null, 2)) + '</pre>';
+    } else {
+      renderResult(lastResult);
+    }
+  }
+
+  rawToggleBtn.addEventListener('click', () => {
+    if (!lastResult) return;
+    rawMode = !rawMode;
+    rawToggleBtn.textContent = rawMode ? 'formatted' : 'raw JSON';
+    rerenderOutput();
+  });
+
+  function setStatusPill(status) {
+    statusPill.className = 'status-pill ' + (status === 'fail' || status === 'warn' || status === 'pass' ? status : '');
+    statusPill.textContent = status;
+    meta.textContent = status;
+  }
+
+  // ── run ──────────────────────────────────────────────────────────────
+  function runDiagnose() {
+    const cfg = currentConfig();
+    if (cfg === null) {
+      output.innerHTML = '<div class="placeholder" style="color:var(--accent)">Invalid JSON. Fix the syntax and try again.</div>';
+      setStatusPill('idle');
+      meta.textContent = 'invalid JSON';
+      return;
+    }
+    const t0 = performance.now();
+    const result = diagnose(cfg);
+    const dt = performance.now() - t0;
+
+    lastResult = result;
+    rawMode = false;
+    rawToggleBtn.textContent = 'raw JSON';
+    renderResult(result);
+    setStatusPill(result.status);
+    timing.textContent = dt.toFixed(2) + ' ms · client-side, 0 requests';
+
+    track('diagnose', {
+      status: result.status,
+      context: (cfg && cfg.context) || '',
+      browser: (cfg && cfg.browser) || ''
+    });
+
+    updatePermalink(cfg);
+  }
+  runBtn.addEventListener('click', runDiagnose);
+
+  resetBtn.addEventListener('click', () => {
+    configToForm(SAMPLE_CONFIG);
+    input.value = JSON.stringify(SAMPLE_CONFIG, null, 2);
+    jsonError.hidden = true;
+    lastResult = null;
+    output.innerHTML = '<div class="placeholder">Fill in the form and press <span class="kbd">Diagnose</span> or <span class="kbd">⌘↵</span> to see the result.<span class="blink"></span></div>';
+    statusPill.className = 'status-pill';
+    statusPill.textContent = 'idle';
+    meta.textContent = 'idle';
+    timing.textContent = 'not run yet';
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = output.innerText.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const old = copyBtn.textContent;
+      copyBtn.textContent = 'copied ✓';
+      setTimeout(() => { copyBtn.textContent = old; }, 1100);
+    } catch (e) {
+      copyBtn.textContent = 'copy failed';
+      setTimeout(() => { copyBtn.textContent = 'copy'; }, 1100);
+    }
+  });
+
+  // ⌘↵ / Ctrl+Enter runs the diagnosis from either pane
+  [input, formPane].forEach((el) => {
+    el.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runDiagnose();
+      }
+    });
+  });
+
+  // ── permalink ────────────────────────────────────────────────────────
+  // Limit: 6000 chars. The Set-Cookie value itself is deliberately left out
+  // of the encoded config: it can be a live session token, and a shareable
+  // link is not the place for it. Only origins/context/browser round-trip;
+  // the recipient re-pastes their own Set-Cookie value.
+  const PERMALINK_LIMIT = 6000;
+  function redactForPermalink(cfg) {
+    const c = Object.assign({}, cfg);
+    delete c.setCookie;
+    return c;
+  }
+  function toBase64Url(str) {
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function fromBase64Url(str) {
+    let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return decodeURIComponent(escape(atob(b64)));
+  }
+  function updatePermalink(cfg) {
+    try {
+      const encoded = toBase64Url(JSON.stringify(redactForPermalink(cfg)));
+      if (encoded.length > PERMALINK_LIMIT) return; // too large, so the URL is left alone
+      history.replaceState(null, '', '#c=' + encoded);
+    } catch (e) {}
+  }
+  function loadFromHash() {
+    const m = location.hash.match(/#c=([^&]+)/);
+    if (!m) return false;
+    if (m[1].length > PERMALINK_LIMIT) return false; // guard against absurd payloads
+    try {
+      const cfg = JSON.parse(fromBase64Url(m[1]));
+      configToForm(cfg);
+      input.value = JSON.stringify(cfg, null, 2);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  copyLinkBtn.addEventListener('click', async () => {
+    const cfg = currentConfig();
+    if (cfg === null) return;
+    updatePermalink(cfg);
+    try {
+      await navigator.clipboard.writeText(location.href);
+      copyLinkBtn.textContent = 'copied ✓';
+      track('copy_link');
+    } catch (e) {
+      copyLinkBtn.textContent = 'copy failed';
+    }
+    setTimeout(() => { copyLinkBtn.textContent = 'Copy link to this diagnosis'; }, 1400);
+  });
+
+  // ── init ─────────────────────────────────────────────────────────────
+  configToForm(SAMPLE_CONFIG);
+  input.value = JSON.stringify(SAMPLE_CONFIG, null, 2);
+
+  if (location.hash && loadFromHash()) {
+    runDiagnose();
+  }
+
+  // Smooth-scroll for in-page anchors
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href').slice(1);
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      e.preventDefault();
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 24, behavior: 'smooth' });
+    });
+  });
+</script>
+
+<script src="subscribe.js" defer></script>
+<script defer src="https://homelab.tailbf8f27.ts.net/script.js" data-website-id="bd63b85f-16d0-4e37-bb57-1cf1ff2ffdad"></script>
+</body>
+</html>

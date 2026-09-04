@@ -1,0 +1,140 @@
+# Cookie Doctor (SameSite, Secure, Domain)
+
+> Free, client-side checker that finds why a session cookie is not stored or not sent: SameSite, Secure, Domain, and Path attribute mismatches, cross-site request blocking, and missing fetch credentials, with the exact fix for each.
+
+Describe your `Set-Cookie` attributes (`SameSite`, `Secure`, `Domain`, `Path`) and the request context (page origin vs. API origin, HTTP vs. HTTPS, same-site vs. cross-site, whether the call is a `fetch()`/XHR request), and the tool reports precisely which browser rule is being enforced and what to change, in your code or on the server. No account, no backend, nothing you type leaves your browser.
+
+## What it checks
+
+The engine (`doctor-cookie.js`) runs 27 distinct checks against the raw `Set-Cookie` header you paste, the page/API origins, and the request context (top-level navigation, iframe, or fetch/XHR). Every rule is quoted from an official source directly in the file's own header comment. Grouped by area:
+
+- **`SameSite`/`Secure` pairing.** `SameSite=None` without `Secure`: per the Set-Cookie spec, `SameSite=None` "requires a secure context"; MDN states plainly: "the `Secure` attribute must also be set when using this value." Without it, the cookie is rejected outright by Chrome, Firefox, and Safari, not merely downgraded (code `samesite_none_requires_secure`, high). `Secure` on a plain HTTP origin: MDN: "Insecure sites (`http:`) cannot set cookies with the `Secure` attribute," with one exception: "The `https:` requirements are ignored when the `Secure` attribute is set by localhost" (code `secure_on_http_origin`, high; the tool has an explicit "behind an HTTPS-terminating proxy" override for this, since a reverse proxy in front of a plain-HTTP origin is a normal, correct setup). No `SameSite` attribute at all: every current browser (Chrome, Edge, Firefox 69+, Safari 13+) defaults it to `Lax`, flagged only as an informational note so it isn't mistaken for `None` (code `samesite_default_lax`, low).
+- **Cross-site / third-party.** A cross-site request (different registrable "site": scheme + registrable domain: MDN Cookies, web.dev) blocked by `SameSite=Strict` (never sent cross-site) or `SameSite=Lax` (sent only on a top-level navigation with a safe method, never a `fetch()`/XHR/iframe subrequest) (code `samesite_blocks_cross_site`, high). Inside a cross-site iframe with `SameSite=None`, Safari's Intelligent Tracking Prevention purges or withholds storage for a domain the user hasn't interacted with directly, independent of `SameSite` (code `itp_blocks_third_party`, high, Safari); other browsers are restricting or partitioning third-party cookies too, so the tool nudges toward the `Partitioned` attribute (CHIPS) for forward compatibility (codes `third_party_cookies_deprecation`, medium, and `chips_suggestion`, low).
+- **`Domain` mismatch**: four distinct shapes, per MDN's Set-Cookie and Cookies pages:
+  - A cookie set on `api.example.com` with `Domain=app.example.com` (or vice versa) is rejected: "a server can only set the `Domain` attribute to its own domain or a parent domain, not to a subdomain or some other domain" (code `domain_mismatch`, high). The fix is either `Domain=example.com` (available to both subdomains) or no `Domain` attribute at all (host-only, available only to the exact host that set it).
+  - A bare top-level label, or a known multi-label public suffix (`co.uk`, `github.io`, `vercel.app`, and similar hosting-platform domains): MDN: `Domain` "cannot be a public suffix such as `com`, `co.uk`, or `github.io`" (code `domain_public_suffix`, high).
+  - `Domain=localhost` in local development: `localhost` is a single-label host with no parent domain to generalize to; browsers reject an explicit `Domain=localhost` in practice (code `domain_localhost_invalid`, high). Omit `Domain` entirely for local development instead; the cookie becomes host-only and still works.
+  - A leading dot, `Domain=.example.com`: legacy syntax: "leading dots in domain names are ignored" by current browsers, so it isn't itself an error, only an informational nudge to double-check against the three real rules above (code `domain_leading_dot_ignored`, low).
+- **`Path`.** Narrower than the request path: MDN: "the forward slash (`/`) character is interpreted as a directory separator, and subdirectories are matched as well." A cookie set with `Path=/app/dashboard` is not sent on a request to `/api/session`, even with every other attribute correct (code `path_mismatch`, medium). A `Path` value that doesn't start with `/` is malformed; browsers fall back to a default rather than rejecting the cookie outright, so the behavior may silently not match what was intended (code `path_attr_not_absolute`, low).
+- **Expiry.** `Max-Age <= 0`, or an `Expires` date already in the past, both delete the cookie immediately per spec rather than storing it (codes `max_age_non_positive` and `expires_in_past`, both high); an `Expires` value the browser can't parse as a valid HTTP-date is also flagged (code `expires_unparsable`, medium).
+- **Cookie-name prefixes.** `__Host-` (and `__Host-Http-`) requires `Secure`, no `Domain` attribute, and `Path=/` exactly; `__Secure-` requires `Secure`; `__Http-` (and `__Host-Http-`) requires both `Secure` and `HttpOnly`. A user agent that enforces cookie prefixes rejects the whole cookie on any violation (codes `host_prefix_violation`, `secure_prefix_violation`, `http_prefix_violation`, all high).
+- **`Partitioned` (CHIPS).** Requires `Secure`: Privacy Sandbox: "Partitioned cookies must be set with `Secure`": or the browser rejects it (code `partitioned_requires_secure`, high). Pairing it with `SameSite=None` keeps the cookie working as a normal third-party cookie in browsers that don't yet support partitioning (code `partitioned_without_samesite_none`, low).
+- **`fetch()`/XHR missing `credentials: 'include'`.** Even a cookie that is stored correctly is not attached to a cross-origin `fetch()` call unless the request opts in. Per the Fetch spec (MDN `RequestInit`): the `credentials` option "defaults to `same-origin`," under which "cross-origin requests will not include credentials" (code `fetch_credentials_missing`, high). Fixing the client alone isn't enough for a cross-origin API: the server must also answer with `Access-Control-Allow-Credentials: true` and an explicit `Access-Control-Allow-Origin` naming the exact page origin: MDN's CORS error reference: the request "was attempted with the credentials flag set, but the server is configured using the wildcard (`*`) ... which doesn't allow the use of credentials" (code `cors_wildcard_credentials_risk`, high). And `credentials: 'omit'` explicitly set on a same-origin call drops the cookie for no reason at all (code `fetch_credentials_omitted_same_origin`, high).
+- **Informational notes**, never blocking on their own: `HttpOnly` hiding a cookie from `document.cookie` is expected behavior, not a bug (`httponly_hides_from_js`); same-site-but-not-same-origin pairs (a subdomain, or a different port) still need `credentials: 'include'` on the client even though `SameSite` itself is satisfied (`same_site_cross_origin_note`); pasting more than one stacked `Set-Cookie` line only analyzes the first (`multiple_lines_pasted`); no `Domain` attribute at all is a normal, valid host-only cookie, just narrower than a shared-subdomain cookie would be (`host_only_cookie_note`).
+
+## Who it's for
+
+Any developer whose session cookie is not stored, or is stored but not sent: a React/Vite (or similar SPA) front end on one origin calling an API on another; different `localhost` ports in development (`:3000` talking to `:8000` is cross-site to a cookie's `SameSite` check even though both are "localhost"); cookies meant to work across subdomains; a cookie read inside an iframe (third-party cookie context); a mobile app's embedded webview; and Safari's Intelligent Tracking Prevention, which WebKit's own documentation describes as blocking all third-party cookies with no exceptions ("ITP by default blocks all third-party cookies. There are no exceptions to this blocking.") and capping JavaScript-set first-party cookies to expire after 7 days of no user interaction with the site.
+
+## How it works
+
+Static HTML plus one dependency-free JavaScript file, `doctor-cookie.js`, exporting a single pure function, `diagnose(config)`. Every check runs against the values you type in, entirely in your browser: read `index.html` and `doctor-cookie.js` directly to verify there is no network call carrying your configuration anywhere.
+
+```js
+import { diagnose } from './doctor-cookie.js';
+
+diagnose({
+  setCookie: 'session=abc123; Domain=api.example.com; Path=/; SameSite=Lax; Secure; HttpOnly',
+  pageOrigin: 'https://app.example.com',
+  apiOrigin: 'https://api.example.com',
+  requestCredentials: 'same-origin',
+  context: 'fetch-xhr',
+});
+```
+
+## Worked example
+
+A React/Vite front end at `https://app.example.com` calling an API at `https://api.example.com`, where the API sets the session cookie shown above, and the front end calls it with:
+
+```js
+fetch('https://api.example.com/me', { credentials: 'same-origin' });
+```
+
+Output:
+
+```json
+{
+  "status": "fail",
+  "summary": "1 blocking issue found. Most urgent: The request is cross-origin (fetch/XHR to a different scheme, host, or port), and requestCredentials is \"same-origin\". fetch()'s default credentials mode is \"same-origin\": a cross-origin call without credentials:'include' neither sends this cookie nor stores one from the response, no matter what SameSite says.",
+  "problems": [
+    {
+      "severity": "high",
+      "code": "fetch_credentials_missing",
+      "message": "The request is cross-origin (fetch/XHR to a different scheme, host, or port), and requestCredentials is \"same-origin\". fetch()'s default credentials mode is \"same-origin\": a cross-origin call without credentials:'include' neither sends this cookie nor stores one from the response, no matter what SameSite says.",
+      "fix": "Add credentials: 'include' to the fetch() call, or xhr.withCredentials = true for XMLHttpRequest."
+    },
+    {
+      "severity": "low",
+      "code": "httponly_hides_from_js",
+      "message": "HttpOnly is set, so this cookie never shows up in document.cookie or the Cookie Store API. That's expected, not a bug: HttpOnly cookies are still read and sent by the browser on matching requests, JavaScript on the page just can't see them (that's the point: it blocks cookie theft via XSS)."
+    },
+    {
+      "severity": "low",
+      "code": "same_site_cross_origin_note",
+      "message": "pageOrigin and apiOrigin are same-site but not same-origin (they differ by host (subdomain)). SameSite is satisfied either way, but that's not enough on its own: fetch/XHR still needs credentials:'include' (or xhr.withCredentials = true) to send or receive this cookie across origins, and the API's CORS headers still apply."
+    }
+  ],
+  "fixes": [
+    { "title": "Add credentials: 'include' to the fetch/XHR call", "value": "fetch(url, { credentials: 'include' })", "where": "Your front-end request code" }
+  ]
+}
+```
+
+The catch here is exactly what this tool is for: `app.example.com` and `api.example.com` share the same registrable domain (`example.com`), so this pair is **same-site**, and `SameSite=Lax` never blocks it: that's what the low-severity note says. The one real, blocking problem is a layer down: they're still different *origins*, and `fetch()`'s default `credentials: 'same-origin'` drops the cookie on any cross-origin call regardless of what `SameSite` allows. "Same-site" and "same-origin" answer two different questions, and it's easy to fix the one that was never broken.
+
+## FAQ
+
+**Why does my cookie disappear the moment I add `SameSite=None`?**
+Almost always because `Secure` wasn't added in the same change. `SameSite=None` is only valid alongside `Secure`; without it, the entire `Set-Cookie` is rejected by the browser, not just the `SameSite` part. Add `Secure`, and confirm the response is actually served over HTTPS (see the next question).
+
+**Why won't the browser set a `Secure` cookie even though I added the attribute?**
+The response has to actually be HTTPS. `Secure` cookies are silently refused on a plain `http://` origin, with a single carve-out for `localhost`. This bites people most often on a staging environment still reached by raw IP or plain HTTP internally.
+
+**Two different `localhost` ports in dev, e.g. `:3000` and `:8000`: why does the cookie not show up on API calls?**
+The scheme+registrable-domain definition of "same-site" doesn't care about port, so `localhost:3000` and `localhost:8000` are same-site to each other. But they're still different *origins*, so a `SameSite=Lax`-or-stricter cookie set by one is not attached to a `fetch()` call to the other unless that call is a top-level navigation, and separately, a cross-origin `fetch()` still needs `credentials: 'include'` regardless of `SameSite`. Most local dev setups actually want `SameSite=Lax` (or `Strict`) plus `credentials: 'include'`, not `SameSite=None`.
+
+**My cookie is set, `document.cookie` shows it, but it's still not attached to my API call. What's left?**
+Check `Path` and `Domain` scoping first (a cookie set from a deep page path defaults its own `Path` to that page's path, which can be narrower than your API route), then check whether the call is same-origin or cross-origin and whether `credentials` is set accordingly. All four (`SameSite`, `Secure`, `Domain`, `Path`) plus the client's `credentials` option are independent gates; any one of them can silently drop the cookie from a single request while `document.cookie` still shows it exists.
+
+**Why does my cookie work in Chrome but not in Safari?**
+Most likely Safari's Intelligent Tracking Prevention: WebKit fully blocks third-party cookies with no exceptions (aside from the Storage Access API), and caps a first-party cookie set via JavaScript to expire after 7 days without the user visiting the site again. A cookie set by your server via `Set-Cookie` (not `document.cookie`) in a first-party context isn't subject to the 7-day JS cap, but it is still subject to the third-party block if it's being read from an iframe or a cross-site embed.
+
+**What is `Domain=.example.com` with a leading dot, and is it a bug?**
+Not on its own: modern browsers ignore the leading dot and treat it the same as `Domain=example.com`. It's usually leftover from an older cookie library's conventions and is worth a second look, not because the dot itself breaks anything, but because it often travels with an actual `Domain` scoping mistake.
+
+**Why does `Domain=localhost` not work in local development?**
+`localhost` has no parent domain to generalize a cookie to, and browsers only allow a `Domain` value that is the exact host or a parent of it. In practice, an explicit `Domain=localhost` is rejected or ignored. Omit the `Domain` attribute for local development; the cookie will default to a host-only cookie scoped to `localhost` itself, which is what you want.
+
+**What is the `Partitioned` attribute (CHIPS), and does it explain my missing cookie?**
+`Partitioned` opts a cookie into per-top-level-site storage, so a third-party cookie set inside an iframe on one site is invisible to the same iframe embedded on a different site. Per the CHIPS documentation, "Partitioned cookies must be set with `Secure`," and `SameSite=None` alongside `Partitioned` is what keeps the cookie working as a normal (unpartitioned) third-party cookie in browsers or configurations where partitioning isn't supported yet. If your cookie needs to be shared across different top-level sites embedding the same iframe, `Partitioned` will not help; that requires an unpartitioned third-party cookie, increasingly blocked outright (see the Safari question above).
+
+## Privacy
+
+No account, no login, no cookies for the tool itself, no server-side processing of your config. The only analytics are anonymous usage counts (event name + count, never the content of what you entered) sent to a self-hosted Umami instance.
+
+## Sources
+
+The rules this tool checks are drawn from:
+
+- MDN: [Set-Cookie header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie): SameSite/Secure/Domain/Path/prefix attribute semantics and validation rules.
+- MDN: [HTTP Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies): same-site vs. cross-site request definition, Domain/Path scoping.
+- web.dev: [SameSite cookies explained](https://web.dev/articles/samesite-cookies-explained): Strict/Lax/None behavior, the default-to-Lax rule.
+- Privacy Sandbox: [CHIPS (Partitioned cookies)](https://privacysandbox.google.com/3pcd/chips): the `Partitioned` attribute, its `Secure` requirement, and the `__Host-` prefix recommendation.
+- MDN: [RequestInit / fetch() `credentials`](https://developer.mozilla.org/en-US/docs/Web/API/RequestInit): default `same-origin` behavior and cross-origin `include` requirements.
+- MDN: [CORS error: credentials with a wildcard origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials): why `Access-Control-Allow-Origin: *` is rejected alongside credentials, and the fix.
+- WebKit: [Intelligent Tracking Prevention](https://webkit.org/blog/7675/intelligent-tracking-prevention/): Safari's purging of storage/cookies for a domain the user hasn't interacted with directly, independent of `SameSite`.
+- WebKit: [Full Third-Party Cookie Blocking and More](https://webkit.org/tracking-prevention/): the current, unconditional third-party cookie block and the 7-day cap on JavaScript-set first-party cookies.
+
+## Links
+
+- Tool: https://arling.sk/cookie-samesite-doctor/
+- Short reference: https://arling.sk/cookie-samesite-doctor/llms.txt
+- Source code: https://github.com/AndryRoby/cookie-samesite-doctor
+- Sibling tool for Google OAuth redirect_uri_mismatch: https://arling.sk/google-oauth-redirect-doctor/
+- Sibling tool for Supabase Auth on the web (Next.js/Vite/SvelteKit): https://arling.sk/supabase-redirect-doctor/
+- Sibling tool for Stripe webhook signature failures: https://arling.sk/stripe-webhook-doctor/
+- Hub (more ARLing tools): https://arling.sk/
+
+## Contact
+
+Built by ARLing s. r. o. (Bratislava, Slovakia). andrej@arling.sk

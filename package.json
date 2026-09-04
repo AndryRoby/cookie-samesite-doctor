@@ -1,0 +1,12 @@
+{
+  "name": "cookie-samesite-doctor",
+  "version": "1.0.0",
+  "description": "Cookie Doctor (SameSite, Secure, Domain) — free, client-side diagnostic for why a session cookie is not stored or not sent: SameSite/Secure/Domain/Path attribute mismatches, cross-site request blocking, fetch credentials, and CORS.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests.mjs"
+  },
+  "license": "UNLICENSED",
+  "author": "ARLing s. r. o. <andrej@arling.sk>"
+}

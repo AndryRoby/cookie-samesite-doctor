@@ -1,0 +1,30 @@
+{
+  "name": "Cookie SameSite / Secure / Domain Doctor",
+  "short_name": "Cookie Doctor",
+  "description": "Diagnose why a session cookie is not stored or not sent: SameSite, Secure, Domain, and Path attribute mismatches, cross-site request blocking, and fetch credentials. Free, client-side, nothing leaves your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f2ea",
+  "theme_color": "#f6f2ea",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
