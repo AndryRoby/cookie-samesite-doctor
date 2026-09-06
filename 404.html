@@ -3,53 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://homelab.tailbf8f27.ts.net; connect-src 'self' https://homelab.tailbf8f27.ts.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Page not found: Cookie Doctor</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="./favicon.ico">
+<link rel="preload" href="./fonts/arling-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/arling-serif.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./style/paper.css">
 <style>
-  :root {
-    --paper:#f6f2ea; --paper-2:#fbf9f4; --ink:#1b1a17; --ink-2:#4a4741; --muted:#66625a; --line:#d9d2c4;
-    --accent:#b23a1d; --accent-soft:#f3e2dc;
-    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
-    --sans:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --paper:#151412; --paper-2:#1d1b18; --ink:#efe9de; --ink-2:#c9c2b5; --muted:#8f887b; --line:#2e2b26; --accent:#e0623f; --accent-soft:#3a1f17; }
-  }
-  * { box-sizing:border-box; }
-  html, body { margin:0; padding:0; }
-  html { background:var(--paper); }
-  body {
-    color:var(--ink); background:var(--paper); font:16px/1.55 var(--sans);
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-  }
-  a { color:inherit; text-decoration-color:var(--line); text-underline-offset:3px; }
-  a:hover { text-decoration-color:var(--accent); }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  /* Colours, type and the paper grain come from style/paper.css. Only the
+     one sheet in the middle of the page is described here. */
+  body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .sheet { position:relative; z-index:2; width:100%; max-width:520px; background:var(--card);
+    border:1px solid var(--line); border-radius:var(--radius); padding:34px 32px 32px;
+    box-shadow:0 10px 30px rgba(20,20,19,.06); }
+  .brand { display:inline-flex; align-items:center; gap:11px; text-decoration:none;
+    color:var(--ink); margin-bottom:26px; }
+  .brand svg { display:block; }
+  .brand b { font:600 20px/1 var(--display); letter-spacing:-.01em; }
+  .brand span { color:var(--muted); font-family:var(--ui); font-size:13px;
+    border-left:1px solid var(--line); padding-left:11px; }
+  h1 { font-size:clamp(25px,3.2vw,34px); margin:0 0 12px; }
+  .sub { margin:0 0 26px; }
   .mono { font-family:var(--mono); }
-  .card {
-    max-width:480px; width:100%;
-    border:1px solid var(--line); background:var(--paper-2); border-radius:6px;
-    padding:36px 32px; text-align:center;
-  }
-  .wordmark { display:inline-block; font:600 18px/1 var(--serif); text-decoration:none; margin-bottom:22px; }
-  .kicker { font:400 13px/1 var(--serif); color:var(--accent); letter-spacing:.04em; margin:0 0 10px; }
-  h1 { font:400 clamp(22px,4vw,28px)/1.25 var(--serif); letter-spacing:-.01em; margin:0 0 12px; }
-  p.sub { color:var(--ink-2); font-size:15px; margin:0 0 26px; }
-  .btn { display:inline-block; font:600 15px/1 var(--sans); padding:12px 20px; border-radius:4px; text-decoration:none; background:var(--accent); color:#fff; border:2px solid var(--accent); }
-  .btn:hover { color:#fff; opacity:.92; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <a class="wordmark" href="./">Cookie Doctor</a>
-    <p class="kicker">404</p>
-    <h1>This page does not exist.</h1>
-    <p class="sub">This cookie was not found either. Head back and paste your Set-Cookie attributes to see why one isn't being stored or sent.</p>
-    <a class="btn" href="./">Back to the diagnosis tool</a>
-  </div>
+<div class="wash" aria-hidden="true"><i></i><i></i></div>
+
+<div class="sheet">
+  <a class="brand" href="./" data-umami-event="404-brand">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><defs><path id="am" fill-rule="evenodd" d="M16 2.5 L29 29.5 H3 Z M16 12.4 L22.4 25.6 H9.6 Z"/><clipPath id="amr"><rect x="16" width="16" height="32"/></clipPath></defs><use href="#am" fill="#141413"/><use href="#am" fill="#b23a1d" clip-path="url(#amr)"/></svg>
+    <b>ARLing</b><span>Cookie Doctor</span>
+  </a>
+  <p class="kicker">404</p>
+  <h1>This page does not exist.</h1>
+  <p class="sub">This cookie was not found either. Head back and paste your Set-Cookie attributes to see why one isn't being stored or sent.</p>
+  <a class="btn btn-solid" href="./" data-umami-event="back-home">Back to the diagnosis tool</a>
+</div>
+<script defer src="https://homelab.tailbf8f27.ts.net/script.js" data-website-id="bd63b85f-16d0-4e37-bb57-1cf1ff2ffdad"></script>
 </body>
 </html>
