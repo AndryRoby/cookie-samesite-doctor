@@ -18,6 +18,9 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="alternate" type="text/plain" href="https://arling.sk/cookie-samesite-doctor/llms.txt" title="llms.txt">
+<link rel="preload" href="fonts/arling-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/arling-serif.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style/paper.css">
 
 <script type="application/ld+json">
 {
@@ -108,310 +111,307 @@
 </script>
 
 <style>
-  :root {
-    --paper:#f6f2ea; --paper-2:#fbf9f4; --ink:#1b1a17; --ink-2:#4a4741; --muted:#66625a; --line:#d9d2c4;
-    --accent:#b23a1d; --accent-soft:#f3e2dc; --ok:#2f6f3e; --warn:#9a6b00;
-    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
-    --sans:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
-    --radius:4px;
-    --maxw:1080px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --paper:#151412; --paper-2:#1d1b18; --ink:#efe9de; --ink-2:#c9c2b5; --muted:#8f887b; --line:#2e2b26; --accent:#e0623f; --accent-soft:#3a1f17; --ok:#7fbf8e; --warn:#d9a54a; }
-  }
-  * { box-sizing:border-box; }
-  html { background:var(--paper); }
-  body { margin:0; color:var(--ink); background:var(--paper); font:16px/1.55 var(--sans); -webkit-font-smoothing:antialiased; }
-  img { max-width:100%; }
-  a { color:inherit; text-decoration-color:var(--line); text-underline-offset:3px; }
-  a:hover { text-decoration-color:var(--accent); }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  /* Everything shared lives in style/paper.css: colours, type, header, footer,
+     sections, buttons, tables and the arrival motion. What is left here is only
+     this page's own machine: the diagnosis tool, its form, and the renderer that
+     prints the result. Nothing below re-declares a token or a font stack. */
+
   [hidden] { display:none !important; }
-  .skip { position:absolute; left:-999px; top:8px; background:var(--ink); color:var(--paper); padding:8px 12px; z-index:100; }
-  .skip:focus { left:8px; }
-  .wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
   .mono { font-family:var(--mono); }
+  .anchor-offset { scroll-margin-top:78px; }
+  .brand svg { display:block; }
 
-  /* Header */
-  header.top { border-bottom:1px solid var(--line); }
-  header.top .wrap { display:flex; align-items:baseline; justify-content:space-between; gap:20px 24px; padding:18px 24px; flex-wrap:wrap; }
-  .wordmark { font:600 21px/1 var(--serif); text-decoration:none; }
-  .wordmark small { font:12.5px/1 var(--sans); color:var(--muted); margin-left:10px; letter-spacing:.04em; }
-  nav.main { display:flex; flex-wrap:wrap; gap:6px 20px; }
-  nav.main a { font-size:14px; text-decoration:none; color:var(--ink-2); white-space:nowrap; }
-  nav.main a:hover { color:var(--accent); }
-  @media (max-width:480px) { .wordmark small { display:none; } }
-
-  /* Hero */
-  .hero { padding:60px 0 44px; border-bottom:1px solid var(--line); }
-  .hero h1 { font:400 clamp(30px,5vw,46px)/1.15 var(--serif); letter-spacing:-.01em; margin:0 0 18px; max-width:24ch; }
-  .hero h1 .mono { font-size:.62em; font-weight:500; }
-  .hero p.lead { font-size:18px; color:var(--ink-2); max-width:62ch; margin:0 0 26px; }
-  .hero-cta { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:28px; }
-  .facts { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px 0; color:var(--muted); font-size:14px; }
-  .facts li + li::before { content:"\00b7"; margin:0 10px; color:var(--line); }
+  /* 1. Hero. The tool is the artefact, so it sits in the hero itself: heading
+     left, the sentence and the proof right, input and result underneath, both
+     readable on a 1440 px screen without scrolling. No drawn scene needed. */
+  .hero { grid-template-columns:8fr 5fr; align-items:end;
+    gap:clamp(12px,1.3vw,18px) var(--gap);
+    padding:clamp(14px,1.4vw,18px) 0 clamp(22px,2.6vw,38px); }
+  .hero h1 { font-size:clamp(32px,4.45vw,64px); margin-bottom:10px; }
+  .hero h1 .mono { font-size:.56em; font-weight:600; }
+  .hero .lead { margin-bottom:0; }
+  .facts { list-style:none; margin:14px 0 0; padding:0; display:flex; flex-wrap:wrap;
+    font-family:var(--ui); font-size:13.5px; color:var(--muted); }
+  .facts li + li::before { content:"\00b7"; margin:0 9px; color:var(--line); }
   .facts b { color:var(--ink); font-weight:600; }
+  .toolhead { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:baseline;
+    gap:2px 16px; margin-top:clamp(8px,1vw,14px); }
+  .toolhead .kicker { margin:0; }
+  .toolhead h2 { font-size:clamp(19px,1.5vw,23px); margin:0; }
+  .toolhead .sub { flex:1 0 100%; font-family:var(--ui); font-size:14px; color:var(--muted);
+    margin:0; max-width:96ch; }
+  .hero .play { grid-column:1 / -1; margin-top:8px; }
+  @media (max-width:900px) { .hero { grid-template-columns:1fr; align-items:start; } }
 
-  /* Buttons */
-  .btn { display:inline-block; font:600 15px/1 var(--sans); padding:12px 18px; border-radius:var(--radius); text-decoration:none; cursor:pointer; border:2px solid transparent; }
-  .btn-solid { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .btn-solid:hover { color:#fff; opacity:.92; }
-  .btn-line { border:2px solid var(--ink); color:var(--ink); background:transparent; }
-  .btn:disabled { opacity:.6; cursor:default; }
-
-  /* Section frame */
-  section.block { padding:56px 0; border-bottom:1px solid var(--line); }
-  .section-head { max-width:74ch; margin-bottom:8px; }
-  .kicker { font:400 14px/1 var(--serif); color:var(--accent); letter-spacing:.04em; margin:0 0 8px; }
-  h2 { font:400 clamp(24px,3.4vw,30px)/1.2 var(--serif); margin:0 0 10px; letter-spacing:-.005em; max-width:26ch; }
-  .sub { color:var(--ink-2); max-width:64ch; margin:0; font-size:15.5px; }
-
-  /* Rules list (problem section) */
-  .rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:26px 32px; margin:30px 0 0; padding:0; list-style:none; counter-reset:r; }
-  .rules li { padding-top:14px; border-top:1px solid var(--line); min-width:0; }
-  .rules li::before { counter-increment:r; content:counter(r,decimal-leading-zero); font:400 14px/1 var(--serif); color:var(--accent); display:block; margin-bottom:8px; }
-  .rules b { display:block; font-weight:600; margin-bottom:4px; font-size:15.5px; }
-  .rules p { margin:0; color:var(--ink-2); font-size:14.5px; overflow-wrap:anywhere; }
-
-  /* Playground */
-  .play { border:1px solid var(--line); background:var(--paper-2); border-radius:6px; overflow:hidden; margin-top:30px; }
-  .play-head { display:flex; align-items:center; gap:14px; padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:12px; color:var(--muted); flex-wrap:wrap; }
+  /* 2. The tool. One framed window: input on the left, result on the right. */
+  .play { border:1px solid var(--line); background:var(--card); border-radius:var(--radius);
+    overflow:hidden; box-shadow:0 10px 30px rgba(20,20,19,.06); }
+  .play-head { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    padding:9px 14px; border-bottom:1px solid var(--line); background:var(--paper-deep);
+    font-family:var(--mono); font-size:12px; color:var(--muted); }
   .play-head .lights { display:flex; gap:6px; }
-  .play-head .lights span { width:9px; height:9px; border-radius:50%; border:1px solid var(--line); }
-  .play-head .path { color:var(--ink-2); }
+  .play-head .lights span { width:9px; height:9px; border-radius:50%; background:rgba(20,20,19,.16); }
+  .play-head .path { color:var(--body); }
   .play-head .path .method { color:var(--accent); }
   .play-head .spacer { flex:1; }
-  .play-head .runtime { color:var(--muted); }
+  .play-fn { font-family:var(--mono); font-size:12px; color:var(--body); overflow-wrap:anywhere; }
+  .play-note { font-family:var(--ui); font-size:12.5px; color:var(--muted); }
 
-  .play-body { display:grid; grid-template-columns:1fr 1fr; min-height:460px; }
-  @media (max-width:900px) { .play-body { grid-template-columns:1fr; } }
-  .pane { display:flex; flex-direction:column; min-width:0; }
-  .pane + .pane { border-left:1px solid var(--line); }
-  @media (max-width:900px) { .pane + .pane { border-left:none; border-top:1px solid var(--line); } }
-  .pane-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  .pane-title { font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+  .play-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .pane { display:flex; flex-direction:column; min-width:0; height:clamp(280px,36vh,460px); }
+  .pane + .pane { border-left:1px solid var(--line); background:var(--paper-deep); }
+  @media (max-width:900px) {
+    .play-body { grid-template-columns:minmax(0,1fr); }
+    .pane { height:auto; }
+    .pane + .pane { border-left:none; border-top:1px solid var(--line); }
+    #form-pane, .output, textarea.json-in { min-height:300px; }
+  }
+  .pane-head { display:flex; align-items:center; justify-content:space-between; gap:10px;
+    flex-wrap:wrap; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .pane-title { font-family:var(--ui); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); }
   .pane-actions { display:flex; gap:6px; flex-wrap:wrap; }
 
-  /* Tabs */
   .tabs { display:flex; gap:4px; }
-  .tab-btn { background:transparent; border:1px solid var(--line); color:var(--ink-2); font-family:var(--sans); font-size:12.5px; padding:5px 10px; border-radius:4px; cursor:pointer; }
-  .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
-  .tab-btn:not(.active):hover { border-color:var(--ink-2); color:var(--ink); }
-
-  /* Small utility buttons */
-  .icon-btn { background:transparent; color:var(--ink-2); border:1px solid var(--line); border-radius:4px; font-family:var(--sans); font-size:12px; padding:5px 10px; cursor:pointer; }
-  .icon-btn:hover { color:var(--ink); border-color:var(--ink-2); background:var(--paper); }
+  .tab-btn { background:transparent; border:1px solid var(--line); color:var(--muted);
+    font:500 12.5px/1 var(--ui); padding:6px 11px; border-radius:9px; cursor:pointer; }
+  .tab-btn.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .tab-btn:not(.active):hover { border-color:var(--body); color:var(--ink); }
+  .icon-btn { background:var(--card); color:var(--body); border:1px solid var(--line);
+    border-radius:9px; font:500 12px/1 var(--ui); padding:6px 11px; cursor:pointer; }
+  .icon-btn:hover { color:var(--ink); border-color:var(--body); }
   .icon-btn:disabled { opacity:.6; cursor:progress; }
-  .icon-btn.btn-solid { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
-  .icon-btn.btn-solid:hover { opacity:.9; background:var(--accent); color:#fff; }
+  .icon-btn.btn-solid, .btn-run { background:var(--accent); color:#fff; border:1px solid var(--accent);
+    font:600 12px/1 var(--ui); border-radius:9px; padding:7px 12px; height:auto; cursor:pointer; }
+  .icon-btn.btn-solid:hover, .btn-run:hover { background:var(--accent-dark); color:#fff; }
 
-  /* Form mode */
-  #form-pane { flex:1; overflow:auto; padding:16px 18px; display:flex; flex-direction:column; gap:20px; min-height:440px; }
-  .form-section { display:flex; flex-direction:column; gap:10px; }
-  .form-section-title { font:600 11px/1 var(--sans); letter-spacing:.04em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:6px; }
-  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  /* 3. Form side */
+  #form-pane { flex:1; overflow:auto; padding:14px 16px; display:flex; flex-direction:column; gap:18px; }
+  .form-section { display:flex; flex-direction:column; gap:9px; min-width:0; }
+  .form-section-title { font:500 11px/1 var(--ui); letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .field-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px; }
   .field { display:flex; flex-direction:column; gap:4px; min-width:0; }
   .field.full { grid-column:1 / -1; }
-  .field label { font-size:12px; color:var(--ink-2); font-family:var(--sans); }
-  .field input[type="text"], .field input[type="number"], .field select, .field textarea {
-    background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:4px;
-    padding:7px 9px; font-family:var(--mono); font-size:12.5px; outline:none; width:100%;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--ink-2); }
-  .field textarea { resize:vertical; min-height:50px; line-height:1.5; }
-  .field .hint { font-size:10.5px; color:var(--muted); font-family:var(--sans); }
-  @media (max-width:480px) { .field-grid { grid-template-columns:1fr; } }
+  .field label { font-family:var(--ui); font-size:12px; color:var(--body); }
+  .field input, .field select, .field textarea { background:var(--card); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+    font-family:var(--mono); font-size:12.5px; outline:none; width:100%; min-width:0; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--accent); }
+  .field textarea { resize:vertical; min-height:52px; line-height:1.5; }
+  .field .hint { font-family:var(--ui); font-size:11px; color:var(--muted); }
+  @media (max-width:520px) { .field-grid { grid-template-columns:minmax(0,1fr); } }
 
   .json-pane { display:flex; flex-direction:column; }
-  textarea.json-in {
-    flex:1; width:100%; background:var(--paper-2); color:var(--ink); border:none; outline:none; resize:none;
-    padding:16px 18px; font-family:var(--mono); font-size:13px; line-height:1.65; tab-size:2; min-height:440px;
-  }
-  .json-error { margin:0; padding:8px 18px; font-family:var(--mono); font-size:11.5px; color:var(--accent); background:var(--accent-soft); border-top:1px solid var(--line); }
+  textarea.json-in { flex:1; width:100%; background:var(--card); color:var(--ink); border:none;
+    outline:none; resize:none; padding:14px 16px; font-family:var(--mono); font-size:13px;
+    line-height:1.65; tab-size:2; }
+  .json-error { margin:0; padding:8px 16px; font-family:var(--mono); font-size:11.5px;
+    color:var(--accent); background:#f7e7e1; border-top:1px solid var(--line); overflow-wrap:anywhere; }
 
-  .output { flex:1; padding:16px 18px; font-family:var(--mono); font-size:13px; line-height:1.7; overflow:auto; min-height:440px; background:var(--paper-2); }
-  .output .placeholder { color:var(--muted); font-size:13px; font-family:var(--mono); }
-  .output .placeholder .blink { display:inline-block; width:7px; height:14px; background:var(--muted); vertical-align:-2px; margin-left:4px; animation:blink 1.1s steps(2,end) infinite; }
-  @keyframes blink { 50% { opacity:0; } }
-
+  /* 4. Result side */
+  .output { flex:1; padding:14px 16px; font-family:var(--mono); font-size:13px; line-height:1.7;
+    overflow:auto; overflow-wrap:anywhere; }
+  .output .placeholder { color:var(--muted); font-size:13px; }
+  .blink { display:inline-block; width:7px; height:14px; background:var(--muted);
+    vertical-align:-2px; margin-left:4px; animation:caret 1.1s steps(2,end) infinite; }
+  @keyframes caret { 50% { opacity:0; } }
   .out-line { white-space:pre-wrap; word-break:break-word; }
-  .k { color:var(--ink-2); }
+  .k { color:var(--muted); }
   .s { color:var(--ok); }
   .n { color:var(--accent); }
-  .b { color:var(--ink-2); font-style:italic; }
-  .p { color:var(--muted); }
+  .b { color:var(--ink); font-weight:600; }
+  .p { color:var(--muted); font-style:italic; }
   .sev-high { color:var(--accent); }
-  .sev-medium { color:var(--warn); }
+  .sev-medium { color:#8a6a12; }
   .sev-low { color:var(--muted); }
 
-  .status-strip { display:flex; align-items:center; gap:14px; padding:10px 18px; border-top:1px solid var(--line); font-family:var(--mono); font-size:11.5px; color:var(--muted); flex-wrap:wrap; }
-  .status-pill { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:4px; border:1px solid var(--line); background:var(--paper); color:var(--ink-2); }
-  .status-pill.fail { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
-  .status-pill.warn { color:var(--warn); border-color:var(--warn); }
+  .status-strip { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:9px 16px;
+    border-top:1px solid var(--line); background:var(--paper-deep);
+    font-family:var(--mono); font-size:11.5px; color:var(--muted); }
+  .status-strip-spacer { flex:1; }
+  .status-pill { display:inline-flex; align-items:center; gap:6px; padding:2px 9px; border-radius:6px;
+    border:1px solid var(--line); background:var(--card); color:var(--body); }
+  .status-pill.fail { color:var(--accent); border-color:var(--accent); }
+  .status-pill.warn { color:#8a6a12; border-color:#8a6a12; }
   .status-pill.pass { color:var(--ok); border-color:var(--ok); }
 
-  /* Rendered result */
-  .result { display:flex; flex-direction:column; gap:20px; }
-  .big-pill { display:inline-flex; align-items:center; font-family:var(--mono); font-size:12px; font-weight:600; padding:4px 10px; border-radius:4px; border:1px solid var(--line); text-transform:uppercase; letter-spacing:.03em; }
+  .result { display:flex; flex-direction:column; gap:18px; }
+  .big-pill { display:inline-flex; align-items:center; font:600 12px/1.6 var(--mono); padding:3px 10px;
+    border-radius:6px; border:1px solid var(--line); text-transform:uppercase; letter-spacing:.03em; }
   .big-pill.pass { color:var(--ok); border-color:var(--ok); }
-  .big-pill.warn { color:var(--warn); border-color:var(--warn); }
+  .big-pill.warn { color:#8a6a12; border-color:#8a6a12; }
   .big-pill.fail { color:var(--accent); border-color:var(--accent); }
-  .result-summary { font-size:13.5px; color:var(--ink-2); line-height:1.6; margin:10px 0 0; }
+  .result-summary { font-family:var(--text); font-size:14px; color:var(--body); line-height:1.6; margin:10px 0 0; }
 
-  .exp-table { width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed; }
-  .exp-table td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  /* A two-column key and value list, so it keeps that shape on a phone as well
+     instead of stacking into cards the way a wide data table has to. */
+  .exp-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .exp-table td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top;
+    font-family:var(--mono); }
   .exp-table td.k { color:var(--muted); white-space:nowrap; padding-right:14px; width:1%; }
   .exp-table td.v { color:var(--ink); word-break:break-all; }
-  .exp-table td.v.mono { font-family:var(--mono); }
   .exp-table td.v.multiline, .exp-table td.v.prose { white-space:pre-wrap; word-break:break-word; }
-  .exp-table td.v.prose { font-family:var(--sans); color:var(--ink-2); }
+  .exp-table td.v.prose { font-family:var(--text); color:var(--body); }
   .exp-table tr:last-child td { border-bottom:none; }
+  @media (max-width:600px) {
+    .exp-table { display:table; }
+    .exp-table tbody { display:table-row-group; }
+    .exp-table tr { display:table-row; background:none; border:none; border-radius:0; margin:0; padding:0; }
+    .exp-table td { display:table-cell; width:auto; border-bottom:1px solid var(--line); padding:6px 8px; }
+    .exp-table td::before { content:none; }
+    .exp-table td.k { width:1%; }
+  }
 
-  .problem-item { border-left:3px solid var(--line); padding:8px 10px; background:var(--paper); border-radius:0 4px 4px 0; font-size:12.5px; line-height:1.5; overflow-wrap:anywhere; }
+  .problem-item { border-left:3px solid var(--line); padding:8px 10px; background:var(--card);
+    border-radius:0 6px 6px 0; font-size:12.5px; line-height:1.55; overflow-wrap:anywhere; }
   .problem-item + .problem-item { margin-top:8px; }
   .problem-item.high { border-color:var(--accent); }
-  .problem-item.medium { border-color:var(--warn); }
-  .problem-item.low { border-color:var(--muted); }
-  .problem-item .sev-tag { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.03em; margin-right:6px; }
+  .problem-item.medium { border-color:#8a6a12; }
+  .problem-item.low, .problem-item.info { border-color:var(--line); }
+  .problem-item .sev-tag { font-family:var(--mono); font-size:10px; text-transform:uppercase;
+    letter-spacing:.04em; margin-right:6px; }
   .problem-item.high .sev-tag { color:var(--accent); }
-  .problem-item.medium .sev-tag { color:var(--warn); }
-  .problem-item.low .sev-tag { color:var(--muted); }
+  .problem-item.medium .sev-tag { color:#8a6a12; }
+  .problem-item.low .sev-tag, .problem-item.info .sev-tag { color:var(--muted); }
   .problem-item .where { color:var(--muted); font-family:var(--mono); font-size:10.5px; margin-top:3px; }
 
-  .fix-item { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; background:var(--paper); border:1px solid var(--line); border-radius:4px; padding:9px 10px; font-size:12px; }
+  .fix-item { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between;
+    gap:10px; background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:9px 10px; font-size:12px; }
   .fix-item + .fix-item { margin-top:8px; }
   .fix-item .fix-body { min-width:0; flex:1; }
-  .fix-item .fix-title { color:var(--ink-2); margin-bottom:4px; }
+  .fix-item .fix-title { color:var(--body); margin-bottom:4px; }
   .fix-item .fix-title .where { color:var(--muted); }
   .fix-item .fix-value { font-family:var(--mono); color:var(--accent); word-break:break-all; margin:0; }
   .fix-item .fix-value.multiline { white-space:pre-wrap; word-break:break-word; overflow-x:auto; }
   .fix-item .copy-fix-btn { flex-shrink:0; }
 
-  .checklist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; font-size:12.5px; color:var(--ink-2); }
+  .checklist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px;
+    font-size:12.5px; color:var(--body); }
   .checklist li { display:flex; gap:8px; line-height:1.5; overflow-wrap:anywhere; }
   .checklist li::before { content:"\2610"; color:var(--accent); flex-shrink:0; }
 
-  .permalink-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 18px 18px; border-top:1px solid var(--line); }
-  .permalink-hint { font-family:var(--mono); font-size:11px; color:var(--muted); }
+  .permalink-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:13px 16px; border-top:1px solid var(--line); }
+  .permalink-hint { font-family:var(--ui); font-size:11.5px; color:var(--muted); }
+  .kbd { font-family:var(--mono); font-size:11px; padding:1px 6px; border-radius:4px;
+    border:1px solid var(--line); background:var(--card); color:var(--body); }
 
-  /* Endpoint / how it works */
-  .endpoint { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; margin-top:30px; }
-  @media (max-width:820px) { .endpoint { grid-template-columns:1fr; } }
-  .codeblock { border:1px solid var(--line); background:var(--paper-2); border-radius:6px; overflow:hidden; }
-  .codeblock-head { padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
-  .codeblock pre { margin:0; padding:16px 18px; font-size:12.5px; line-height:1.7; overflow-x:auto; color:var(--ink-2); font-family:var(--mono); -webkit-overflow-scrolling:touch; }
-  .endpoint-copy p { margin:0 0 14px; color:var(--ink-2); font-size:15px; line-height:1.6; }
-  .endpoint-copy .note { font-family:var(--mono); font-size:12.5px; color:var(--muted); border-left:2px solid var(--accent); padding:8px 0 8px 14px; margin-top:18px; line-height:1.6; }
+  /* 5. Three reasons: an index of causes, not a grid of cards. */
+  .rules { list-style:none; counter-reset:r; margin:clamp(22px,2.4vw,34px) 0 0; padding:0;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(min(270px,100%),1fr)); gap:var(--gap); }
+  .rules li { border-top:1px solid var(--line); padding-top:14px; min-width:0; }
+  .rules li::before { counter-increment:r; content:counter(r,decimal-leading-zero);
+    font-family:var(--ui); font-size:12px; letter-spacing:.12em; color:var(--accent);
+    display:block; margin-bottom:8px; }
+  .rules b { display:block; font:600 clamp(17px,1.3vw,20px)/1.3 var(--display); color:var(--ink);
+    letter-spacing:-.01em; margin-bottom:6px; }
+  .rules p { margin:0; font-size:clamp(15px,1.05vw,16.5px); overflow-wrap:anywhere; }
 
-  /* Free */
-  #pricing .btn-line { margin-top:26px; }
+  /* 6. How it works */
+  .endpoint { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--gap);
+    align-items:start; margin-top:clamp(22px,2.4vw,34px); }
+  @media (max-width:860px) { .endpoint { grid-template-columns:minmax(0,1fr); } }
+  .codeblock { border:1px solid var(--line); background:var(--card); border-radius:var(--radius);
+    overflow:hidden; min-width:0; }
+  .codeblock-head { padding:10px 14px; border-bottom:1px solid var(--line); display:flex;
+    justify-content:space-between; align-items:center; gap:10px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .codeblock pre { margin:0; border:none; border-radius:0; background:none; padding:15px 16px;
+    font-size:12.5px; line-height:1.7; color:var(--body); overflow-x:auto; }
+  .codeblock pre span { white-space:pre; }
+  .endpoint-copy p { font-size:clamp(15px,1.05vw,16.5px); }
+  .endpoint-copy .note, .callout { font-family:var(--ui); font-size:13.5px; color:var(--muted);
+    border-left:2px solid var(--accent); padding:6px 0 6px 14px; margin-top:18px; line-height:1.6; }
+  .callout p { margin:0 0 8px; font-family:var(--ui); font-size:13.5px; color:var(--muted); }
+  .callout p:last-child { margin-bottom:0; }
+
+  /* 7. Free, and the one thing we ask for */
   .ask { display:flex; flex-wrap:wrap; align-items:center; gap:14px 24px; }
-  .ask p { margin:0; color:var(--ink-2); max-width:56ch; }
-  .subscribe-ask { border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+  .ask p { margin:0; max-width:56ch; }
+  .subscribe-ask { border-top:none; margin-top:0; padding-top:0; }
   .subscribe-form { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-  .subscribe-form input[type="email"] { height:44px; min-width:0; flex:1 1 240px; padding:0 14px; border:1px solid var(--line); border-radius:4px; background:var(--paper-2); color:var(--ink); font:15px/1 var(--sans); }
+  .subscribe-form input[type="email"] { height:46px; min-width:0; flex:1 1 240px; padding:0 14px;
+    border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--ink);
+    font:15px/1 var(--ui); }
   .subscribe-form input[type="email"]::placeholder { color:var(--muted); }
   .subscribe-form .btn { flex:none; }
-  .hp { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-  #subscribe-thanks { color:var(--ok); font-weight:600; }
-  #subscribe-error { color:var(--accent); font-weight:600; }
-  @media (max-width: 480px) { .subscribe-form input[type="email"], .subscribe-form button { width:100%; } }
+  .hp { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  #subscribe-thanks, #subscribe-error { font-weight:600; }
+  @media (max-width:480px) { .subscribe-form input[type="email"], .subscribe-form button { width:100%; } }
 
-  /* FAQ (details/summary) */
-  details { border-top:1px solid var(--line); padding:14px 0; }
+  .band .sub, .band .ask p, .band p { color:#c9c2b4; }
+  .band b, .band strong { color:#fffdf8; }
+  .band .subscribe-form input[type="email"] { background:rgba(255,253,248,.06);
+    border-color:rgba(255,253,248,.3); color:#fffdf8; }
+  .band .subscribe-form input[type="email"]::placeholder { color:#a8a294; }
+  .band #subscribe-thanks { color:#9dc48f; }
+  .band #subscribe-error { color:var(--accent-light); }
+  .band .rule { background:rgba(255,253,248,.18); }
+
+  /* 8. Questions */
+  details { border-top:1px solid var(--line); padding:15px 0; }
   details:last-of-type { border-bottom:1px solid var(--line); }
-  summary { cursor:pointer; font:400 18px/1.3 var(--serif); list-style:none; display:flex; justify-content:space-between; gap:12px; }
+  summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:14px;
+    font:600 clamp(17px,1.3vw,20px)/1.35 var(--display); color:var(--ink); letter-spacing:-.01em; }
   summary::-webkit-details-marker { display:none; }
-  summary::after { content:"+"; color:var(--accent); flex:none; font-family:var(--sans); }
+  summary::after { content:"+"; color:var(--accent); flex:none; font-family:var(--ui); font-weight:400; }
   details[open] summary::after { content:"\2013"; }
-  details p { color:var(--ink-2); margin:10px 0 0; max-width:70ch; font-size:14.5px; overflow-wrap:anywhere; }
+  details p { margin:10px 0 0; max-width:74ch; font-size:clamp(15px,1.05vw,16.5px); overflow-wrap:anywhere; }
 
-  /* Footer */
-  footer { padding:32px 0 48px; color:var(--muted); font-size:13.5px; }
-  footer .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px 32px; }
-  footer b { color:var(--ink); font-weight:600; }
-  footer a { color:var(--ink-2); }
+  /* 9. Footer */
+  footer b { color:var(--ink); }
+  footer .cols { gap:20px 32px; }
   footer p { margin:10px 0 0; }
-
-  .kbd { font-family:var(--mono); font-size:11px; padding:1px 6px; border-radius:3px; border:1px solid var(--line); background:var(--paper); color:var(--ink-2); }
-  .anchor-offset { scroll-margin-top:24px; }
-  pre { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  pre span { white-space:pre; }
 </style>
 </head>
 <body>
+<div class="wash" aria-hidden="true"><i></i><i></i></div>
 
 <a class="skip" href="#playground">Skip to the diagnosis tool</a>
 
-<!-- Header -->
-<header id="top" class="top">
-  <div class="wrap">
-    <a class="wordmark" href="https://arling.sk/">Cookie Doctor<small>an ARLing tool</small></a>
-    <nav class="main" aria-label="Page">
-      <a href="#problem">Problem</a>
-      <a href="#playground">Diagnose</a>
-      <a href="#endpoint">How it works</a>
-      <a href="#faq">FAQ</a>
+<header id="top">
+  <div class="wrap bar">
+    <a class="brand" href="https://arling.sk/">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><defs><path id="am" fill-rule="evenodd" d="M16 2.5 L29 29.5 H3 Z M16 12.4 L22.4 25.6 H9.6 Z"/><clipPath id="amr"><rect x="16" width="16" height="32"/></clipPath></defs><use href="#am" fill="#141413"/><use href="#am" fill="#b23a1d" clip-path="url(#amr)"/></svg>
+      <b>ARLing</b><span>Cookie Doctor</span>
+    </a>
+    <nav aria-label="Page">
+      <a href="#problem" data-umami-event="nav-problem">Problem</a>
+      <a href="#playground" data-umami-event="nav-diagnose">Diagnose</a>
+      <a href="#endpoint" data-umami-event="nav-how-it-works">How it works</a>
+      <a href="#faq" data-umami-event="nav-faq">FAQ</a>
     </nav>
   </div>
 </header>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="wrap">
-    <h1>Set-Cookie sent, cookie never set? Find the attribute that blocks it.</h1>
-    <p class="lead">Paste the raw <span class="mono">Set-Cookie</span> header, your page and API origins, and how the request is made: fetch/XHR, an iframe, or a top-level navigation. Get the exact attribute, or the exact line of client code, that's dropping your session cookie: SameSite, Secure, Domain, Path, credentials mode, or third-party blocking.</p>
-    <div class="hero-cta">
-      <a href="#playground" class="btn btn-solid">Diagnose your cookie</a>
-      <a href="https://github.com/AndryRoby/cookie-samesite-doctor" class="btn btn-line" target="_blank" rel="noopener">View source on GitHub</a>
+<main>
+
+<div class="wrap hero" id="hero">
+  <div>
+    <h1 id="h1"><span class="l">Set-Cookie sent, cookie</span><span class="l">never set? Find the</span><span class="l">attribute that blocks it.</span></h1>
+    <div class="cta r d2">
+      <a href="#playground" class="btn btn-solid" data-umami-event="hero-diagnose">Diagnose your cookie</a>
+      <a href="https://github.com/AndryRoby/cookie-samesite-doctor" class="btn btn-line" target="_blank" rel="noopener" data-umami-event="hero-github">View source on GitHub</a>
     </div>
-    <ul class="facts">
+  </div>
+  <div>
+    <p class="lead r d1">Paste the raw <span class="mono">Set-Cookie</span> header, your page and API origins, and how the request is made: fetch/XHR, an iframe, or a top-level navigation. Get the exact attribute, or the exact line of client code, that's dropping your session cookie: SameSite, Secure, Domain, Path, credentials mode, or third-party blocking.</p>
+    <ul class="facts r d3">
       <li><b>27</b> rules checked</li>
       <li><b>130</b> automated tests</li>
       <li><b>0 &euro;</b>, no account</li>
       <li>runs entirely in your browser</li>
     </ul>
   </div>
-</div>
-
-<main>
-
-<!-- 01 Problem -->
-<section id="problem" class="block anchor-offset">
-  <div class="wrap">
-    <div class="section-head">
-      <p class="kicker">01</p>
-      <h2>Three reasons a Set-Cookie response never becomes a stored, sent cookie.</h2>
-      <p class="sub">A React/Vite front end calling an API on another origin, a subdomain split between app and api, an embedded iframe, a Safari user: each breaks a cookie for a different reason. These three account for almost every "but the header is right there" bug.</p>
-    </div>
-    <ol class="rules">
-      <li>
-        <b>SameSite=None needs Secure, and cross-site needs SameSite=None.</b>
-        <p>No <span class="mono">Secure</span> alongside <span class="mono">SameSite=None</span> and the browser rejects the cookie outright. A cross-site fetch, XHR, or iframe request with <span class="mono">Lax</span>, <span class="mono">Strict</span>, or no <span class="mono">SameSite</span> at all (default: Lax) never carries the cookie either.</p>
-      </li>
-      <li>
-        <b>Cross-origin fetch needs credentials:'include'.</b>
-        <p>Different port, different subdomain, or different scheme is enough. fetch's default credentials mode is <span class="mono">'same-origin'</span>: without <span class="mono">credentials:'include'</span>, cookies are never sent or stored, no matter what <span class="mono">SameSite</span> says.</p>
-      </li>
-      <li>
-        <b>Domain has to be your host or its parent.</b>
-        <p>A cookie set by <span class="mono">api.example.com</span> with <span class="mono">Domain=app.example.com</span>, or with <span class="mono">Domain=localhost</span>, is rejected by the browser, not just scoped differently than you expected.</p>
-      </li>
-    </ol>
+  <div class="toolhead r d3">
+    <p class="kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l7 2.6v5.3c0 4-2.9 7.5-7 9.1-4.1-1.6-7-5.1-7-9.1V6.1z"/><path d="M9.4 12.2l1.9 1.9 3.4-3.7"/></svg>02</p>
+    <h2>Paste the header and the request context. Get the exact diff.</h2>
+    <p class="sub">Nothing you type is sent anywhere. The check runs in your browser, against the documented behavior of SameSite, Secure, Domain, Path, fetch credentials, CORS, and third-party cookie blocking.</p>
   </div>
-</section>
-
-<!-- 02 Diagnose -->
-<section id="playground" class="block anchor-offset">
-  <div class="wrap">
-    <div class="section-head">
-      <p class="kicker">02</p>
-      <h2>Paste the header and the request context. Get the exact diff.</h2>
-      <p class="sub">Nothing you type is sent anywhere. The check runs in your browser, against the documented behavior of SameSite, Secure, Domain, Path, fetch credentials, CORS, and third-party cookie blocking.</p>
-    </div>
-
-    <div class="play">
+<div class="play r d4" id="playground">
       <div class="play-head">
         <div class="lights"><span></span><span></span><span></span></div>
         <div class="path"><span class="method">fn</span>&nbsp;CookieDoctor.diagnose(config)</div>
@@ -423,12 +423,12 @@
         <div class="pane">
           <div class="pane-head">
             <div class="tabs">
-              <button class="tab-btn active" id="tab-form" type="button">Form</button>
-              <button class="tab-btn" id="tab-json" type="button">JSON</button>
+              <button class="tab-btn active" id="tab-form" type="button" data-umami-event="tool-tab-form">Form</button>
+              <button class="tab-btn" id="tab-json" type="button" data-umami-event="tool-tab-json">JSON</button>
             </div>
             <div class="pane-actions">
-              <button class="icon-btn" id="reset-btn" type="button" title="Reset to example">example</button>
-              <button class="icon-btn btn-solid" id="run-btn" type="button">Diagnose &crarr;</button>
+              <button class="icon-btn" id="reset-btn" type="button" title="Reset to example" data-umami-event="tool-example">example</button>
+              <button class="icon-btn btn-solid" id="run-btn" type="button" data-umami-event="tool-run">Diagnose &crarr;</button>
             </div>
           </div>
 
@@ -507,8 +507,8 @@
           <div class="pane-head">
             <div class="pane-title">Result &middot; <span id="response-meta">idle</span></div>
             <div class="pane-actions">
-              <button class="icon-btn" id="raw-toggle-btn" type="button">raw JSON</button>
-              <button class="icon-btn" id="copy-btn" type="button">copy</button>
+              <button class="icon-btn" id="raw-toggle-btn" type="button" data-umami-event="tool-raw-json">raw JSON</button>
+              <button class="icon-btn" id="copy-btn" type="button" data-umami-event="tool-copy-result">copy</button>
             </div>
           </div>
           <div class="output" id="output">
@@ -524,24 +524,50 @@
       </div>
 
       <div class="permalink-row">
-        <button class="icon-btn" id="copy-link-btn" type="button">Copy link to this diagnosis</button>
+        <button class="icon-btn" id="copy-link-btn" type="button" data-umami-event="tool-copy-link">Copy link to this diagnosis</button>
         <span class="permalink-hint">Encodes origins/context into the URL, never the Set-Cookie value itself: that's never put in a shareable link.</span>
       </div>
     </div>
+</div>
+
+<!-- 01 Problem -->
+<section id="problem" class="deep anchor-offset">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l3.5-3.2"/><circle cx="12" cy="14.5" r="1"/></svg>01</p>
+      <h2 class="r">Three reasons a Set-Cookie response never becomes a stored, sent cookie.</h2>
+      <p class="sub r d1">A React/Vite front end calling an API on another origin, a subdomain split between app and api, an embedded iframe, a Safari user: each breaks a cookie for a different reason. These three account for almost every "but the header is right there" bug.</p>
+    </div>
+    <div class="rule"></div>
+    <ol class="rules">
+      <li class="r d1">
+        <b>SameSite=None needs Secure, and cross-site needs SameSite=None.</b>
+        <p>No <span class="mono">Secure</span> alongside <span class="mono">SameSite=None</span> and the browser rejects the cookie outright. A cross-site fetch, XHR, or iframe request with <span class="mono">Lax</span>, <span class="mono">Strict</span>, or no <span class="mono">SameSite</span> at all (default: Lax) never carries the cookie either.</p>
+      </li>
+      <li class="r d2">
+        <b>Cross-origin fetch needs credentials:'include'.</b>
+        <p>Different port, different subdomain, or different scheme is enough. fetch's default credentials mode is <span class="mono">'same-origin'</span>: without <span class="mono">credentials:'include'</span>, cookies are never sent or stored, no matter what <span class="mono">SameSite</span> says.</p>
+      </li>
+      <li class="r d3">
+        <b>Domain has to be your host or its parent.</b>
+        <p>A cookie set by <span class="mono">api.example.com</span> with <span class="mono">Domain=app.example.com</span>, or with <span class="mono">Domain=localhost</span>, is rejected by the browser, not just scoped differently than you expected.</p>
+      </li>
+    </ol>
   </div>
 </section>
 
+
 <!-- 03 How it works -->
-<section id="endpoint" class="block anchor-offset">
+<section id="endpoint" class="anchor-offset">
   <div class="wrap">
     <div class="section-head">
-      <p class="kicker">03</p>
-      <h2>One function. Config in, diagnosis out.</h2>
-      <p class="sub">No server, no API key, no signup. <span class="mono">doctor-cookie.js</span> is plain JavaScript: read it, fork it, or run it in your own scripts or CI.</p>
+      <p class="kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 8V5.5M15 8V5.5M4 13h2M18 13h2"/></svg>03</p>
+      <h2 class="r">One function. Config in, diagnosis out.</h2>
+      <p class="sub r d1">No server, no API key, no signup. <span class="mono">doctor-cookie.js</span> is plain JavaScript: read it, fork it, or run it in your own scripts or CI.</p>
     </div>
-
+    <div class="rule"></div>
     <div class="endpoint">
-      <div class="codeblock">
+      <div class="codeblock r d1">
         <div class="codeblock-head">
           <span>doctor-cookie.js</span>
           <span>0 dependencies</span>
@@ -571,7 +597,7 @@
 }</pre>
       </div>
 
-      <div class="endpoint-copy">
+      <div class="endpoint-copy r d2">
         <p><strong style="color:var(--ink)">Everything runs client-side.</strong> The form above calls this exact function in your browser. There is no backend, no API key, and no request that carries your cookie or origins anywhere.</p>
         <p>It parses the Set-Cookie header attribute by attribute, computes whether your two origins are same-origin, same-site, or cross-site, applies SameSite's actual sending rules for the request context you specify, and checks Secure, Domain, Path, Expires/Max-Age, cookie-name prefixes, Partitioned, fetch credentials, and CORS against each other, in the order a real browser would reject them.</p>
         <div class="note">Free and open source. Found a case it gets wrong? Open a GitHub issue on the repo. No ads, and no tracking beyond anonymous usage counts.</div>
@@ -581,19 +607,20 @@
 </section>
 
 <!-- 04 Free -->
-<section id="pricing" class="block anchor-offset">
+<section id="pricing" class="band anchor-offset">
   <div class="wrap">
     <div class="section-head">
-      <p class="kicker">04</p>
-      <h2>Free.</h2>
-      <p class="sub">No account, no payment, no usage limit: it runs as a static page in your browser, so there is no server to bill for.</p>
+      <p class="kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="9" width="17" height="11" rx="1.5"/><path d="M2.5 9h19M12 9v11"/><path d="M12 9c-1.5-3.5-2.8-4.7-4.2-4.2C6.4 5.3 6.6 7.6 8 8.4c1 .5 2.4.6 4 .6zM12 9c1.5-3.5 2.8-4.7 4.2-4.2 1.4.5 1.2 2.8-.2 3.6-1 .5-2.4.6-4 .6z"/></svg>04</p>
+      <h2 class="r">Free.</h2>
+      <p class="sub r d1">No account, no payment, no usage limit: it runs as a static page in your browser, so there is no server to bill for.</p>
     </div>
-    <div class="ask subscribe-ask" id="subscribe">
+    <div class="rule"></div>
+    <div class="ask subscribe-ask r d2" id="subscribe">
       <p><b>Tell me when a new tool lands.</b> New tools only. No newsletter, no sharing. Reply to any mail to be removed.</p>
       <form id="subscribe-form" class="subscribe-form" data-subscribe data-source="cookie-samesite-doctor" data-lang="en" data-thanks="subscribe-thanks" data-error="subscribe-error" novalidate>
         <div class="hp" aria-hidden="true"><input type="text" name="website" id="subscribe-website" tabindex="-1" autocomplete="off"></div>
         <input type="email" id="subscribe-email" name="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" aria-label="Email address">
-        <button class="btn btn-solid" type="submit">Notify me</button>
+        <button class="btn btn-solid" type="submit" data-umami-event="subscribe_submit">Notify me</button>
       </form>
       <p id="subscribe-thanks" hidden>Thanks. You will hear from us only when something new is live.</p>
       <p id="subscribe-error" hidden>Could not save. Write to <a href="mailto:andrej@arling.sk">andrej@arling.sk</a>.</p>
@@ -602,35 +629,36 @@
 </section>
 
 <!-- 05 Questions -->
-<section id="faq" class="block anchor-offset">
+<section id="faq" class="deep anchor-offset">
   <div class="wrap">
     <div class="section-head">
-      <p class="kicker">05</p>
-      <h2>Questions developers actually search for.</h2>
-      <p class="sub">Straight answers to the same cookie questions this tool diagnoses, for when you just need the answer, not the checker.</p>
+      <p class="kicker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>05</p>
+      <h2 class="r">Questions developers actually search for.</h2>
+      <p class="sub r d1">Straight answers to the same cookie questions this tool diagnoses, for when you just need the answer, not the checker.</p>
     </div>
+    <div class="rule"></div>
 
-    <details>
+    <details class="r d1">
       <summary>Why is my cookie not set even though Set-Cookie is in the response?</summary>
       <p>The most common reasons: <span class="mono">SameSite=None</span> is set without <span class="mono">Secure</span>, so the browser rejects it outright; <span class="mono">Secure</span> is set but the response came over plain http (localhost is the only exemption, and Safari does not even grant that one); the <span class="mono">Domain</span> attribute names a host that is neither the responding server nor a parent of it (for example a response from <span class="mono">api.example.com</span> trying to set <span class="mono">Domain=app.example.com</span>); or a fetch/XHR call to a different origin used the default credentials mode instead of <span class="mono">credentials:'include'</span>, so the browser never stored the Set-Cookie response in the first place.</p>
     </details>
-    <details>
+    <details class="r d2">
       <summary>What is the difference between same-site and same-origin?</summary>
       <p>Origin is scheme + host + port: <span class="mono">https://app.example.com</span> and <span class="mono">https://api.example.com</span> are different origins, and so are <span class="mono">https://app.example.com</span> and <span class="mono">https://app.example.com:8443</span>. Site is coarser: scheme plus the registrable domain (roughly, the domain suffix plus the label before it), ignoring subdomain and port. <span class="mono">app.example.com</span> and <span class="mono">api.example.com</span> are cross-origin but same-site. SameSite cookie rules only care about site; fetch's credentials mode and CORS care about origin, so a request can be same-site and still need <span class="mono">credentials:'include'</span>.</p>
     </details>
-    <details>
+    <details class="r d3">
       <summary>Do I need SameSite=None for localhost:3000 talking to localhost:8000?</summary>
       <p>No. Both are the host "localhost", so they are same-site regardless of port; <span class="mono">SameSite=Lax</span> or even <span class="mono">Strict</span> is fine. What trips people up is that they are still different origins (the port differs), so a cross-origin fetch/XHR call needs <span class="mono">credentials:'include'</span> (or <span class="mono">xhr.withCredentials = true</span>) and the API needs matching CORS headers, or the cookie will not be sent or stored even though SameSite was never the problem.</p>
     </details>
-    <details>
+    <details class="r d4">
       <summary>Why does it work in Chrome but not Safari?</summary>
       <p>Safari's Intelligent Tracking Prevention blocks or purges storage, including cookies, for a third party the user has not interacted with directly as a first party, independent of <span class="mono">SameSite=None</span>. A cookie set inside a cross-site iframe can work in Chrome (which mostly still allows it, though it is moving to partition or restrict it too) and still fail in Safari. There is no cookie attribute that opts back into third-party storage in Safari; the fix is routing the request through a first-party domain, using the Storage Access API, or not depending on a third-party cookie there at all.</p>
     </details>
-    <details>
+    <details class="r d5">
       <summary>Why is the cookie not sent with fetch?</summary>
       <p><span class="mono">fetch()</span>'s default credentials mode is <span class="mono">'same-origin'</span>: for any cross-origin request (different scheme, host, or port) it neither sends existing cookies nor stores new ones from Set-Cookie, no matter what SameSite says. Add <span class="mono">credentials:'include'</span> (<span class="mono">xhr.withCredentials = true</span> for XMLHttpRequest). Once that is set, the API's CORS response also has to cooperate: <span class="mono">Access-Control-Allow-Credentials: true</span> and an exact <span class="mono">Access-Control-Allow-Origin</span> naming your page's origin, never a wildcard <span class="mono">'*'</span>, which is incompatible with credentials.</p>
     </details>
-    <details>
+    <details class="r d6">
       <summary>Does this tool send my cookie anywhere?</summary>
       <p>No. Everything you type is parsed and diffed entirely in your browser; there is no backend and no request that carries your Set-Cookie value, session token, or origins anywhere. Read <span class="mono">index.html</span> and <span class="mono">doctor-cookie.js</span> directly to verify. The only network calls this page makes are to load itself and, if you use it, an anonymous page-view/event count sent to a self-hosted Umami instance that never receives what you typed. The "copy link" permalink also deliberately leaves the Set-Cookie value out of the URL.</p>
     </details>
@@ -642,15 +670,53 @@
 <footer>
   <div class="wrap cols">
     <div><b>ARLing s. r. o.</b><br>Ivansk&aacute; cesta 32E<br>821 04 Bratislava, Slovakia</div>
-    <div>Company ID 56583486<br>VAT ID SK2122352100<br><a href="mailto:andrej@arling.sk">andrej@arling.sk</a></div>
+    <div>Company ID 56583486<br>VAT ID SK2122352100<br><a href="mailto:andrej@arling.sk" data-umami-event="contact-email">andrej@arling.sk</a></div>
     <div>
-      <a href="https://arling.sk/">ARLing</a> &middot; <a href="https://arling.sk/google-oauth-redirect-doctor/" target="_blank" rel="noopener">Google OAuth Redirect Doctor</a> &middot; <a href="https://arling.sk/supabase-redirect-doctor/" target="_blank" rel="noopener">Supabase Redirect Doctor</a> &middot; <a href="https://arling.sk/redirect-doctor/" target="_blank" rel="noopener">Expo + Supabase Redirect Doctor</a><br>
-      <a href="llms.txt">llms.txt</a> &middot; <a href="sitemap.xml">sitemap</a> &middot; <a href="https://github.com/AndryRoby/cookie-samesite-doctor" target="_blank" rel="noopener">source on GitHub</a> &middot; <a href="https://arling.sk/privacy/">Privacy</a>
+      <a href="https://arling.sk/" data-umami-event="footer-arling">ARLing</a> &middot; <a href="https://arling.sk/google-oauth-redirect-doctor/" target="_blank" rel="noopener" data-umami-event="footer-google-oauth-redirect-doctor">Google OAuth Redirect Doctor</a> &middot; <a href="https://arling.sk/supabase-redirect-doctor/" target="_blank" rel="noopener" data-umami-event="footer-supabase-redirect-doctor">Supabase Redirect Doctor</a> &middot; <a href="https://arling.sk/redirect-doctor/" target="_blank" rel="noopener" data-umami-event="footer-redirect-doctor">Expo + Supabase Redirect Doctor</a><br>
+      <a href="llms.txt" data-umami-event="footer-llms">llms.txt</a> &middot; <a href="sitemap.xml" data-umami-event="footer-sitemap">sitemap</a> &middot; <a href="https://github.com/AndryRoby/cookie-samesite-doctor" target="_blank" rel="noopener" data-umami-event="footer-github">source on GitHub</a> &middot; <a href="https://arling.sk/privacy/" data-umami-event="footer-privacy">Privacy</a>
       <p>Read-only, client-side check: nothing you enter is sent anywhere, and it does not call your server or browser APIs on your behalf. Verify in your browser's DevTools before shipping. Not affiliated with Google, Apple/Safari, Mozilla/Firefox, or any browser vendor.</p>
       <p>Provided as is, without warranty. Anonymous visit and click counts via self-hosted Umami; we never see what you type.</p>
     </div>
   </div>
 </footer>
+
+<!-- Arrival motion, Paper v2 section 7: one IntersectionObserver, no library,
+     no requestAnimationFrame loop, and prefers-reduced-motion switches it off. -->
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hero = document.querySelector('.hero');
+  if (reduce) {
+    document.querySelectorAll('.r, section, .hero').forEach(function (e) { e.classList.add('in'); });
+    return;
+  }
+  if (hero) { requestAnimationFrame(function () { hero.classList.add('in'); }); }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.08 });
+  document.querySelectorAll('section').forEach(function (s) { io.observe(s); });
+
+  // The heading arrives word by word, like a well set title. Lines that carry
+  // their own markup (a code span) arrive whole, so the markup survives.
+  var h1 = document.getElementById('h1');
+  if (h1) {
+    var i = 0;
+    Array.prototype.forEach.call(h1.querySelectorAll('.l'), function (line) {
+      if (line.children.length === 0) {
+        line.innerHTML = line.textContent.split(' ').map(function (w) {
+          return '<span class="w" style="transition-delay:' + (i++ * 0.06).toFixed(2) + 's">' + w + '</span>';
+        }).join(' ');
+      } else {
+        line.innerHTML = '<span class="w" style="transition-delay:' + (i++ * 0.06).toFixed(2) + 's">' + line.innerHTML + '</span>';
+      }
+    });
+    requestAnimationFrame(function () { h1.classList.add('in'); });
+  }
+})();
+</script>
 
 <!-- Scripts -->
 <script type="module">
