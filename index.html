@@ -210,7 +210,8 @@
   .field .hint { font-family:var(--ui); font-size:11px; color:var(--muted); }
   @media (max-width:520px) { .field-grid { grid-template-columns:minmax(0,1fr); } }
 
-  .json-pane { display:flex; flex-direction:column; }
+  .json-pane { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
+  .json-pane[hidden] { display:none; }
   textarea.json-in { flex:1; width:100%; background:var(--card); color:var(--ink); border:none;
     outline:none; resize:none; padding:14px 16px; font-family:var(--mono); font-size:13px;
     line-height:1.65; tab-size:2; }
