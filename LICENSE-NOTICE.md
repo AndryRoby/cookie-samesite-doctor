@@ -11,7 +11,7 @@ You are welcome to:
   https://arling.sk/cookie-samesite-doctor/ freely, for any
   purpose, personal or commercial, at no cost.
 - Read the source of `index.html` / `doctor-cookie.js` to understand
-  or verify what it does client-side (it's static files — view source
+  or verify what it does client-side (it's static files: view source
   is the whole codebase).
 
 You are **not** granted rights to:
@@ -23,8 +23,8 @@ You are **not** granted rights to:
 
 If you want to do something with the code beyond using the hosted tool
 as intended (e.g. embed a derivative internally, contribute a fix,
-translate it, or anything not covered above), just ask —
-andrej@arling.sk. Reasonable requests (bug fixes, accessibility
+translate it, or anything not covered above), just ask:
+support@arling.sk. Reasonable requests (bug fixes, accessibility
 improvements, adding a missing check) are generally welcome; this
 notice exists to prevent silent repackaging, not to block
 collaboration.
