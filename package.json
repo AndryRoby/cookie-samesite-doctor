@@ -8,5 +8,5 @@
     "test": "node tests.mjs"
   },
   "license": "UNLICENSED",
-  "author": "ARLing s. r. o. <andrej@arling.sk>"
+  "author": "ARLing s. r. o. <support@arling.sk>"
 }
