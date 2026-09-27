@@ -386,6 +386,22 @@ eq('__Host- prefix missing Path=/ gets it added in the corrected line',
   lacks('an explicit SameSite does not get the default-Lax note', r.problems, 'samesite_default_lax');
 }
 
+// Lax by default is Chrome 80+ and Edge 86+ only (MDN BCD Lax_default: Firefox behind a flag, Safari no).
+{
+  const r = diagnose({ setCookie: 'sid=abc' });
+  const note = r.problems.find((p) => p.code === 'samesite_default_lax');
+  eq('the default-Lax note does not claim Firefox or Safari default to Lax', /Firefox and Safari still treat a missing SameSite as None/.test(note.message), true);
+}
+{
+  const cross = { pageOrigin: 'https://app.example.com', apiOrigin: 'https://api.other.com', context: 'fetch-xhr' };
+  const chrome = diagnose(Object.assign({ setCookie: 'sid=abc; Secure', browser: 'chrome' }, cross));
+  has('no SameSite, cross-site fetch in Chrome: blocked as Lax', chrome.problems, 'samesite_blocks_cross_site');
+  const firefox = diagnose(Object.assign({ setCookie: 'sid=abc; Secure', browser: 'firefox' }, cross));
+  lacks('no SameSite, cross-site fetch in Firefox: None, not blocked by SameSite', firefox.problems, 'samesite_blocks_cross_site');
+  const note = firefox.problems.find((p) => p.code === 'samesite_default_lax');
+  eq('Firefox note says the check uses None and warns about Chrome', /Firefox still treats that as SameSite=None/.test(note.message), true);
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // 11. diagnose() — cross-site enforcement
 // ─────────────────────────────────────────────────────────────────────────
@@ -469,6 +485,18 @@ eq('__Host- prefix missing Path=/ gets it added in the corrected line',
   lacks('no CHIPS suggestion outside of an iframe context', r.problems, 'chips_suggestion');
 }
 
+// Public suffixes checked against publicsuffix.org/list (2026-09-27).
+{
+  const railway = diagnose({ setCookie: 'sid=abc; SameSite=Lax; Secure', pageOrigin: 'https://web.up.railway.app', apiOrigin: 'https://api.up.railway.app', context: 'fetch-xhr' });
+  has('two up.railway.app hosts are cross-site (up.railway.app is a public suffix)', railway.problems, 'samesite_blocks_cross_site');
+  const glitch = diagnose({ setCookie: 'sid=abc; SameSite=Lax; Secure', pageOrigin: 'https://a.glitch.me', apiOrigin: 'https://b.glitch.me', context: 'fetch-xhr' });
+  lacks('two glitch.me hosts are same-site (glitch.me is not on the list)', glitch.problems, 'samesite_blocks_cross_site');
+  const dom = diagnose({ setCookie: 'sid=abc; Domain=up.railway.app; Secure', apiOrigin: 'https://api.up.railway.app' });
+  has('Domain=up.railway.app is reported as a public suffix', dom.problems, 'domain_public_suffix');
+  eq('Domain=up.railway.app is dropped from the corrected line', dom.expected.correctedSetCookieLine, 'sid=abc; Path=/; Secure');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────
 // 12. diagnose() — same-site-but-cross-origin note (e.g. differing ports)
 // ─────────────────────────────────────────────────────────────────────────

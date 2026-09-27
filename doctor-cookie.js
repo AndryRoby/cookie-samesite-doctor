@@ -96,15 +96,20 @@ const MULTI_LABEL_SUFFIXES = new Set([
   'co.in', 'net.in', 'org.in', 'firm.in', 'gen.in', 'ind.in',
   'com.mx', 'com.ar', 'com.tr', 'com.sg', 'com.hk', 'com.tw',
   'co.kr', 'or.kr',
+  // Hosting platforms: each entry checked against publicsuffix.org/list on
+  // 2026-09-27 (glitch.me is NOT on the list, so it is not here: two
+  // *.glitch.me hosts are same-site). up.railway.app has three labels.
   'github.io', 'gitlab.io', 'pages.dev', 'vercel.app', 'netlify.app',
   'herokuapp.com', 'web.app', 'firebaseapp.com', 'workers.dev',
-  'fly.dev', 'onrender.com', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com',
-  'repl.co', 'glitch.me', 'azurewebsites.net', 'ondigitalocean.app',
+  'fly.dev', 'onrender.com', 'ngrok.io', 'ngrok.app', 'ngrok.dev', 'ngrok-free.app',
+  'ngrok-free.dev', 'trycloudflare.com', 'repl.co', 'replit.app', 'replit.dev',
+  'azurewebsites.net', 'ondigitalocean.app', 'up.railway.app', 'deno.dev',
+  'amplifyapp.com', 'cloudfront.net',
 ]);
 
 // registrable domain: loopback/IP hosts are their own "site"; a known
-// multi-label suffix (co.uk, github.io, ...) pulls in one extra label;
-// otherwise the last two labels. This is a heuristic, not a full Public
+// multi-label suffix (co.uk, github.io, up.railway.app, ...) pulls in one
+// extra label; otherwise the last two labels. This is a heuristic, not a full Public
 // Suffix List lookup — see the tool's disclaimer.
 function registrableDomain(hostname) {
   const h = safeStr(hostname).toLowerCase();
@@ -112,6 +117,8 @@ function registrableDomain(hostname) {
   if (isLoopbackHost(h) || isIpHost(h)) return h;
   const labels = h.split('.');
   if (labels.length <= 2) return h;
+  const last3 = labels.slice(-3).join('.');
+  if (MULTI_LABEL_SUFFIXES.has(last3)) return labels.length > 3 ? labels.slice(-4).join('.') : h;
   const last2 = labels.slice(-2).join('.');
   if (MULTI_LABEL_SUFFIXES.has(last2)) return labels.slice(-3).join('.');
   return last2;
@@ -318,7 +325,12 @@ function computeExpected(config) {
   const apiSite = siteOf(api);
   const isCrossOrigin = page.valid && api.valid ? page.origin !== api.origin : null;
   const isCrossSite = pageSite && apiSite ? pageSite !== apiSite : null;
-  const effectiveSameSite = cookie.provided && !cookie.invalid ? cookie.sameSite || 'Lax' : null;
+  // A missing SameSite is Lax only in Chrome (80+) and Edge (86+); Firefox
+  // has Lax-by-default only behind a preference and Safari not at all, so
+  // both still treat it as None (MDN browser-compat-data, Set-Cookie
+  // SameSite.Lax_default, checked 2026-09-27). No browser chosen: Chrome.
+  const defaultSameSite = browser === 'firefox' || browser === 'safari' ? 'None' : 'Lax';
+  const effectiveSameSite = cookie.provided && !cookie.invalid ? cookie.sameSite || defaultSameSite : null;
 
   let correctedSetCookieLine = null;
   if (cookie.provided && !cookie.invalid) {
@@ -648,7 +660,9 @@ export function diagnose(config) {
       pushProblem(problems, {
         severity: 'low',
         code: 'samesite_default_lax',
-        message: 'No SameSite attribute is set. Chrome, Edge, Firefox (69+), and Safari (13+) all default a cookie with no SameSite to Lax, not None: it will NOT be sent on cross-site subrequests (fetch, XHR, iframes) even though nothing here says so explicitly.',
+        message: effectiveSameSite === 'None'
+          ? `No SameSite attribute is set. ${browser === 'firefox' ? 'Firefox' : 'Safari'} still treats that as SameSite=None, so this check uses None, but Chrome (80+) and Edge (86+) treat the same cookie as Lax and will NOT send it on cross-site subrequests (fetch, XHR, iframes). Set SameSite explicitly so every browser behaves the same.`
+          : 'No SameSite attribute is set. Chrome (80+) and Edge (86+) treat that as SameSite=Lax, not None: it will NOT be sent on cross-site subrequests (fetch, XHR, iframes) even though nothing here says so explicitly. Firefox and Safari still treat a missing SameSite as None, so the same cookie can work there and fail in Chrome.',
         path: 'setCookie',
       });
     }
