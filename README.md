@@ -114,7 +114,7 @@ Found a cookie-storage cause this tool doesn't catch, or a check that flags some
 
 ## License
 
-All rights reserved, see [LICENSE-NOTICE.md](LICENSE-NOTICE.md). Reading the source and learning from it is fine; deploying your own copy of it as a competing product is not.
+MIT, see [LICENSE](LICENSE). Use it, fork it, ship it in your own projects. The ARLing name and logo are not part of the license, so please do not present a fork as an ARLing product. Bug reports and pull requests are welcome.
 
 ---
 

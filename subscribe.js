@@ -1,6 +1,6 @@
 /*
  * Shared "notify me about new tools" subscribe form.
- * Wires every <form data-subscribe> on the page to the ARLing homelab
+ * Wires every <form data-subscribe> on the page to the ARLing
  * subscribe API. No inline handlers (CSP script-src has no 'unsafe-inline').
  *
  * Expected markup per form:
